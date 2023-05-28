@@ -3,6 +3,12 @@
  */
 
 /**
+ * Version of the iCARE Python package to load from PyPI.
+ * @type {string}
+ */
+let pyICareVersion = '1.0.0';
+
+/**
  * URL to the Pyodide CDN
  * @type {string}
  */
@@ -79,7 +85,7 @@ async function loadICare() {
 
     await pyodide.loadPackage('micropip');
     const micropip = pyodide.pyimport('micropip');
-    await micropip.install('pyicare');
+    await micropip.install('pyicare=='.concat(pyICareVersion));
 
     return pyodide.runPython(`import icare
 icare`);
