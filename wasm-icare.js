@@ -41,40 +41,6 @@ async function loadPyodideFromCDN() {
 }
 
 /**
- * Function to load files from a list of URLs and write them to the Pyodide file system.
- * @param fileURLs
- * @returns {Promise<Awaited<unknown>[]>}
- */
-async function fetchFilesAndWriteToPyodideFS(fileURLs) {
-    if (!pyodide) {
-        throw new Error('Pyodide is not loaded. Please initialize this library using the loadWasmICare() function.');
-    }
-
-    async function fetchAndWriteFile(url) {
-        try {
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                console.error(`Failed to fetch file from ${url}`);
-                return {isError: true, message: `Failed to fetch file from ${url}`};
-            }
-
-            const fileContent = await response.text();
-            const fileName = url.substring(url.lastIndexOf('/') + 1);
-            pyodide.FS.writeFile(fileName, fileContent);
-
-            console.log(`File ${fileName} successfully loaded to the Pyodide file system.`);
-            return {isError: false, message: `File ${fileName} successfully loaded to the Pyodide file system.`};
-        } catch (error) {
-            console.error(`Error fetching and writing file: ${error.message}`);
-            return {isError: true, message: `Error fetching and writing file: ${error.message}`};
-        }
-    }
-
-    return await Promise.all(fileURLs.map(fetchAndWriteFile));
-}
-
-/**
  * Function to load the iCARE Python package and convert it into Wasm. Return the Wasm-iCARE object.
  * @returns {Promise<*>}
  */
@@ -89,10 +55,6 @@ async function loadICare() {
 
     return pyodide.runPython(`import icare
 icare`);
-}
-
-function getQuotedFileNameOrNone(url) {
-    return url ? `'${url.substring(url.lastIndexOf('/') + 1)}'` : 'None';
 }
 
 /**
@@ -117,6 +79,40 @@ class iCARE {
 
     valueOrNone(value) {
         return value ? JSON.stringify(value) : 'None';
+    }
+
+    /**
+     * Function to load files from a list of URLs and write them to the Pyodide file system.
+     * @param fileURLs
+     * @returns {Promise<Awaited<unknown>[]>}
+     */
+    async fetchFilesAndWriteToPyodideFS(fileURLs) {
+        if (!pyodide) {
+            throw new Error('Pyodide is not loaded. Please initialize this library using the loadWasmICare() function.');
+        }
+
+        async function fetchAndWriteFile(url) {
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    console.error(`Failed to fetch file from ${url}`);
+                    return {isError: true, message: `Failed to fetch file from ${url}`};
+                }
+
+                const fileContent = await response.text();
+                const fileName = url.substring(url.lastIndexOf('/') + 1);
+                pyodide.FS.writeFile(fileName, fileContent);
+
+                console.log(`File ${fileName} successfully loaded to the Pyodide file system.`);
+                return {isError: false, message: `File ${fileName} successfully loaded to the Pyodide file system.`};
+            } catch (error) {
+                console.error(`Error fetching and writing file: ${error.message}`);
+                return {isError: true, message: `Error fetching and writing file: ${error.message}`};
+            }
+        }
+
+        return await Promise.all(fileURLs.map(fetchAndWriteFile));
     }
 
     /**
@@ -266,7 +262,7 @@ class iCARE {
             applySnpProfileUrl,
         ].filter(url => url !== undefined);
 
-        await fetchFilesAndWriteToPyodideFS(fileURLs);
+        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
 
         applyAgeStart = self.valueOrNone(applyAgeStart);
         applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
@@ -485,7 +481,7 @@ result
             applySnpProfileUrl,
         ].filter(url => url !== undefined);
 
-        await fetchFilesAndWriteToPyodideFS(fileURLs);
+        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
 
         applyAgeStart = self.valueOrNone(applyAgeStart);
         applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
@@ -550,6 +546,133 @@ result
         return result;
     }
 
+    /**
+     * This function is used to validate absolute risk models.
+     * @async
+     * @function
+     * @param studyDataUrl
+     *  A URL to a CSV file containing the study data. The data must contain the following columns:
+     *      1) 'observed_outcome': the disease status { 0: censored; 1: disease occurred by the end of the follow-up
+     *          period },
+     *      2) 'study_entry_age': age (in years) when entering the cohort,
+     *      3) 'study_exit_age': age (in years) at last follow-up visit,
+     *      4) 'time_of_onset': time (in years) from study entry to disease onset; note that all subjects are
+     *         disease-free at the time of entry and those individuals who do not develop the disease by the end of the
+     *         follow-up period are considered censored, and this value is set to 'inf'.
+     *      5) 'sampling_weights': for a case-control study nested within a cohort study, this is column is provided to
+     *         indicate the probability of the inclusion of that individual into the nested case-control study. If the
+     *         study is not a nested case-control study, do not include this column in the study data.
+     * @param predictedRiskInterval
+     *  If the risk validation is to be performed over the total follow-up period, set this parameter to the string
+     *  'total-followup'. Otherwise, it should be set to either an integer or an array of integers representing the
+     *  number of years after study entry over which, the estimated risk is being validated. Example: 5 for a 5-year
+     *  risk validation.
+     * @param icareModelParameters
+     *  An object containing the parameters of the absolute risk model to be validated. The keys of the object
+     *  are the parameters of the 'computeAbsoluteRisk' function. If the risk prediction being validated is from a
+     *  method other than iCARE, this parameter should be set to null and the 'predictedRiskVariableName' and
+     *  'linearPredictorVariableName' parameters should be set to the names of the columns containing the risk
+     *  predictions and linear predictor values, respectively, in the study data.
+     * @param predictedRiskVariableName
+     *  If the risk prediction is to be done by iCARE (i.e. using the computeAbsoluteRisk() method), set this value
+     *  to null. Else, supply the risk predictions for each individual in the study data, using some other method,
+     *  as an additional column in the study data. The name of that column should be supplied here as a string.
+     * @param linearPredictorVariableName
+     *  The linear predictor is a risk score for an individual calculated as: Z * beta. Here, Z is a vector of risk
+     *  factor values for that individual and beta is a vector of log relative risks. If the linear predictor values are
+     *  to be calculated by iCARE (i.e. using the compute_absolute_risk() method), set this value to null. Else, supply
+     *  the linear predictor values for each individual in the study data as an additional column in the study data.
+     *  The name of that column should be supplied here.
+     * @param referenceEntryAge
+     *  Specify an integer or an array of integers, representing the ages at entry for the reference population, to
+     *  compute their absolute risks. If both 'referencePredictedRisks' and 'referenceLinearPredictors' are  provided,
+     *  this parameter is ignored.
+     * @param referenceExitAge
+     *  Specify an integer or an array of integers, representing the ages at exit for the reference population, to
+     *  compute their absolute risks. If both 'reference_predicted_risks' and 'reference_linear_predictors' are
+     *  provided, this parameter is ignored.
+     * @param referencePredictedRisks
+     *  An array of absolute risk estimates for the reference population assuming the entry ages specified at
+     *  'referenceEntryAge' and exit ages specified at 'referenceExitAge'. If both this parameter and
+     *  'referenceLinearPredictors' are provided, they are not re-computed using the computeAbsoluteRisk() method.
+     * @param referenceLinearPredictors
+     *  An array of linear predictor values for the reference population assuming the entry ages specified at
+     *  'referenceEntryAge' and exit ages specified at 'referenceExitAge'. If both this parameter and
+     *  'referencePredictedRisks' are provided, they are not re-computed using the computeAbsoluteRisk() method.
+     * @param numberOfPercentiles
+     *  The number of percentiles of the risk score that determines the number of strata over which, the risk prediction
+     *  model is to be validated.
+     * @param linearPredictorCutoffs
+     *  An array of user specified cut-points for the linear predictor to define categories for absolute risk
+     *  calibration and relative risk calibration.
+     * @param datasetName
+     *  Name of the validation dataset, e.g., "PLCO full cohort" or "Full cohort simulation".
+     * @param modelName
+     *  Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
+     * @param seed
+     *  Fix a seed for reproducibility.
+     * @returns {Promise<{}|*>}
+     *  An object with the following keys—
+     *      1) 'info':
+     *          An object with the following keys:
+     *              - 'risk_prediction_interval': A string describing the risk prediction interval e.g., "5 years". If
+     *                the risk prediction is over the total follow-up period of the study, this reads
+     *                "Observed follow-up". If each individual is assigned a different risk prediction interval, this
+     *                reads "Varies across individuals".
+     *              - 'dataset_name': The name of the validation dataset.
+     *              - 'model_name': The name of the absolute risk model being validated.
+     *      2) 'study_data':
+     *          A records-oriented JSON representation of the user-input study data. Additionally, the following columns
+     *          are added to the study data:
+     *              - 'predicted_risk_interval': The risk prediction interval for each individual in the study data
+     *                based on the user-input parameter value for 'predictedRiskInterval'.
+     *              - 'followup': The observed follow-up time for each individual in the study data after censoring and
+     *                based on the user-input parameter value for 'predictedRiskInterval'.
+     *              - 'risk_estimates': The estimated absolute risks for each individual in the study data based on the
+     *                model specified by the user-input parameters. This column is only present when the
+     *                'predictedRiskVariableName' parameter is set to null.
+     *              - 'linear_predictors': The estimated linear predictors for each individual in the study data based
+     *                on the model specified by the user-input parameters. This column is only present when the
+     *                'linearPredictorVariableName' parameter is set to null.
+     *              - 'linear_predictors_category': The category of the linear predictor for each individual in the
+     *                study data based on the user-input parameter value for 'linearPredictorCutoffs', if provided, else
+     *                based on 'numberOfPercentiles'.
+     *      3) 'reference':
+     *          An object with two further keys: 'absolute_risk' and 'risk_score' containing the predicted absolute
+     *          risks and linear predictors for the reference population, respectively. This key is only present when
+     *          either both 'referenceEntryAge' and 'referenceExitAge' are provided to be calculated by iCARE, or
+     *          pre-calculated 'referencePredictedRisks' and 'referenceLinearPredictors' are both directly provided by
+     *          the user.
+     *      4) 'incidence_rates':
+     *          The estimated age-specific incidence rates in the study and population as a data frame converted into
+     *          the records-oriented JSON format. The columns of the data frame are "age" and "study_rate". When iCARE
+     *          parameters are included (containing the disease incidence rates), "population_rate" is also included as
+     *          a column.
+     *      5) 'auc':
+     *          An object containing the area under the receiver operating characteristic curve (AUC), the variance,
+     *          and the 95% confidence interval for the AUC. The object has the following keys: 'auc', 'variance',
+     *          'lower_ci', and 'upper_ci'.
+     *      6) 'expected_by_observed_ratio':
+     *          An object containing the ratio of the expected and the observed number of cases in the study population,
+     *          and the 95% confidence interval for the ratio. The dictionary has the following keys: 'ratio',
+     *          'lower_ci', and 'upper_ci'.
+     *      7) 'calibration':
+     *          An object containing the calibration results. The dictionary has the following keys: 'absolute_risk',
+     *          and 'relative_risk' containing the calibration results for absolute risk and relative risk,
+     *          respectively. Each of these keys is a dictionary with the following information (associated key name):
+     *          statistical testing method name ('method'), p-value ('p_value'), variance matrix ('variance'),
+     *          test-statistic ('statistic'; with a sub-key containing 'chi_square' for the chi-squared metric), and
+     *          parameters of the statistical test ('parameter'; with a sub-key 'degrees_of_freedom' for the degrees of
+     *          freedom of the chi-squared distribution).
+     *      8) 'category_specific_calibration':
+     *          A records-oriented JSON containing the category-specific calibration results. The columns of the data
+     *          frame are: 'category', 'observed_absolute_risk', 'predicted_absolute_risk', 'lower_ci_absolute_risk',
+     *          'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
+     *          'upper_ci_relative_risk'. The rows of the data frame are the categories of the risk score.
+     *      9) 'method':
+     *          A string containing the name of the iCARE method being used. When this method is used, the method name
+     *          is "iCARE - absolute risk model validation".
+     */
     async validateAbsoluteRiskModel(
         {
             studyDataUrl,
@@ -615,7 +738,7 @@ result
                 icareModelParameters.applySnpProfileUrl,
             ].filter(url => url !== undefined);
 
-            await fetchFilesAndWriteToPyodideFS(fileURLs);
+            await self.fetchFilesAndWriteToPyodideFS(fileURLs);
 
             icareModelParameters.applyAgeStart = self.valueOrNone(icareModelParameters.applyAgeStart);
             icareModelParameters.applyAgeIntervalLength = self.valueOrNone(icareModelParameters.applyAgeIntervalLength);
@@ -657,7 +780,7 @@ result
 
         const fileURLs = [studyDataUrl].filter(url => url !== undefined);
 
-        await fetchFilesAndWriteToPyodideFS(fileURLs);
+        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
 
         studyDataUrl = self.getFileNameOrNone(studyDataUrl);
         predictedRiskInterval = self.valueOrNone(predictedRiskInterval);
@@ -707,7 +830,7 @@ result
 }
 
 /**
- * Function to initialize Wasm-iCARE.
+ * Function to load Wasm-iCARE. It has the same functionalities as Py-iCARE.
  * @async
  * @function
  * @returns {Promise<iCARE>}
