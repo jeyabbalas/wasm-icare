@@ -91,6 +91,10 @@ async function loadICare() {
 icare`);
 }
 
+function getQuotedFileNameOrNone(url) {
+    return url ? `'${url.substring(url.lastIndexOf('/') + 1)}'` : 'None';
+}
+
 /**
  * Wrapper class to hold the iCARE Wasm object and add web-specific functionalities to its methods.
  * @class
@@ -103,16 +107,16 @@ class iCARE {
         this.__version__ = icare.__version__;
     }
 
-    getQuotedFileNameOrNone(url) {
-        return url ? `'${url.substring(url.lastIndexOf('/') + 1)}'` : 'None';
+    getFileNameFromUrl(url) {
+        return url.substring(url.lastIndexOf('/') + 1);
+    }
+
+    getFileNameOrNone(url) {
+        return url ? JSON.stringify(self.getFileNameFromUrl(url)) : 'None';
     }
 
     valueOrNone(value) {
-        return value ? value : 'None';
-    }
-
-    quotedValueOrNone(value) {
-        return value ? `'${value}'` : 'None';
+        return value ? JSON.stringify(value) : 'None';
     }
 
     /**
@@ -264,19 +268,19 @@ class iCARE {
 
         await fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = Array.isArray(applyAgeStart) ? JSON.stringify(applyAgeStart) : self.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = Array.isArray(applyAgeIntervalLength) ? JSON.stringify(applyAgeIntervalLength) : self.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = this.getQuotedFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = this.getQuotedFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaUrl = this.getQuotedFileNameOrNone(modelCovariateFormulaUrl);
-        modelLogRelativeRiskUrl = this.getQuotedFileNameOrNone(modelLogRelativeRiskUrl);
-        modelReferenceDatasetUrl = this.getQuotedFileNameOrNone(modelReferenceDatasetUrl);
-        modelReferenceDatasetWeightsVariableName = self.quotedValueOrNone(modelReferenceDatasetWeightsVariableName);
-        modelSnpInfoUrl = this.getQuotedFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableName = self.quotedValueOrNone(modelFamilyHistoryVariableName);
+        applyAgeStart = self.valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaUrl = self.getFileNameOrNone(modelCovariateFormulaUrl);
+        modelLogRelativeRiskUrl = self.getFileNameOrNone(modelLogRelativeRiskUrl);
+        modelReferenceDatasetUrl = self.getFileNameOrNone(modelReferenceDatasetUrl);
+        modelReferenceDatasetWeightsVariableName = self.valueOrNone(modelReferenceDatasetWeightsVariableName);
+        modelSnpInfoUrl = self.getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableName = self.valueOrNone(modelFamilyHistoryVariableName);
         numImputations = self.valueOrNone(numImputations);
-        applyCovariateProfileUrl = this.getQuotedFileNameOrNone(applyCovariateProfileUrl);
-        applySnpProfileUrl = this.getQuotedFileNameOrNone(applySnpProfileUrl);
+        applyCovariateProfileUrl = self.getFileNameOrNone(applyCovariateProfileUrl);
+        applySnpProfileUrl = self.getFileNameOrNone(applySnpProfileUrl);
         returnLinearPredictors = returnLinearPredictors ? 'True' : 'False';
         returnReferenceRisks = returnReferenceRisks ? 'True' : 'False';
         seed = self.valueOrNone(seed);
@@ -483,25 +487,25 @@ result
 
         await fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = Array.isArray(applyAgeStart) ? JSON.stringify(applyAgeStart) : self.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = Array.isArray(applyAgeIntervalLength) ? JSON.stringify(applyAgeIntervalLength) : self.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = self.getQuotedFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = self.getQuotedFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaBeforeCutpointUrl = self.getQuotedFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
-        modelCovariateFormulaAfterCutpointUrl = self.getQuotedFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
-        modelLogRelativeRiskBeforeCutpointUrl = self.getQuotedFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
-        modelLogRelativeRiskAfterCutpointUrl = self.getQuotedFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
-        modelReferenceDatasetBeforeCutpointUrl = self.getQuotedFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
-        modelReferenceDatasetAfterCutpointUrl = self.getQuotedFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
-        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = self.quotedValueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
-        modelReferenceDatasetWeightsVariableNameAfterCutpoint = self.quotedValueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
-        modelSnpInfoUrl = self.getQuotedFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableNameBeforeCutpoint = self.quotedValueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
-        modelFamilyHistoryVariableNameAfterCutpoint = self.quotedValueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
-        applyCovariateProfileBeforeCutpointUrl = self.getQuotedFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
-        applyCovariateProfileAfterCutpointUrl = self.getQuotedFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
-        applySnpProfileUrl = self.getQuotedFileNameOrNone(applySnpProfileUrl);
-        cutpoint = Array.isArray(cutpoint) ? JSON.stringify(cutpoint) : self.valueOrNone(cutpoint);
+        applyAgeStart = self.valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaBeforeCutpointUrl = self.getFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
+        modelCovariateFormulaAfterCutpointUrl = self.getFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
+        modelLogRelativeRiskBeforeCutpointUrl = self.getFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
+        modelLogRelativeRiskAfterCutpointUrl = self.getFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
+        modelReferenceDatasetBeforeCutpointUrl = self.getFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
+        modelReferenceDatasetAfterCutpointUrl = self.getFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
+        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = self.valueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
+        modelReferenceDatasetWeightsVariableNameAfterCutpoint = self.valueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
+        modelSnpInfoUrl = self.getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableNameBeforeCutpoint = self.valueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
+        modelFamilyHistoryVariableNameAfterCutpoint = self.valueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
+        applyCovariateProfileBeforeCutpointUrl = self.getFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
+        applyCovariateProfileAfterCutpointUrl = self.getFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
+        applySnpProfileUrl = self.getFileNameOrNone(applySnpProfileUrl);
+        cutpoint = self.valueOrNone(cutpoint);
         numImputations = self.valueOrNone(numImputations);
         returnLinearPredictors = self.returnLinearPredictors ? 'True' : 'False';
         returnReferenceRisks = self.returnReferenceRisks ? 'True' : 'False';
@@ -580,61 +584,123 @@ result
             modelName = 'Example risk prediction model',
             seed = 1234,
         }) {
-        const fileURLs = [
-            studyDataUrl,
-            icareModelParameters.modelDiseaseIncidenceRatesUrl,
-            icareModelParameters.modelCompetingIncidenceRatesUrl,
-            icareModelParameters.modelCovariateFormulaUrl,
-            icareModelParameters.modelLogRelativeRiskUrl,
-            icareModelParameters.modelReferenceDatasetUrl,
-            icareModelParameters.modelSnpInfoUrl,
-            icareModelParameters.applyCovariateProfileUrl,
-            icareModelParameters.applySnpProfileUrl,
-        ].filter(url => url !== undefined);
+        icareModelParameters = Object.assign({
+            applyAgeStart: undefined,
+            applyAgeIntervalLength: undefined,
+            modelDiseaseIncidenceRatesUrl: undefined,
+            modelCompetingIncidenceRatesUrl: undefined,
+            modelCovariateFormulaUrl: undefined,
+            modelLogRelativeRiskUrl: undefined,
+            modelReferenceDatasetUrl: undefined,
+            modelReferenceDatasetWeightsVariableName: undefined,
+            modelSnpInfoUrl: undefined,
+            modelFamilyHistoryVariableName: undefined,
+            numImputations: 5,
+            applyCovariateProfileUrl: undefined,
+            applySnpProfileUrl: undefined,
+            returnLinearPredictors: false,
+            returnReferenceRisks: false,
+            seed: 1234,
+        }, icareModelParameters);
+
+        if (icareModelParameters) {
+            const fileURLs = [
+                icareModelParameters.modelDiseaseIncidenceRatesUrl,
+                icareModelParameters.modelCompetingIncidenceRatesUrl,
+                icareModelParameters.modelCovariateFormulaUrl,
+                icareModelParameters.modelLogRelativeRiskUrl,
+                icareModelParameters.modelReferenceDatasetUrl,
+                icareModelParameters.modelSnpInfoUrl,
+                icareModelParameters.applyCovariateProfileUrl,
+                icareModelParameters.applySnpProfileUrl,
+            ].filter(url => url !== undefined);
+
+            await fetchFilesAndWriteToPyodideFS(fileURLs);
+
+            icareModelParameters.applyAgeStart = self.valueOrNone(icareModelParameters.applyAgeStart);
+            icareModelParameters.applyAgeIntervalLength = self.valueOrNone(icareModelParameters.applyAgeIntervalLength);
+            icareModelParameters.modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(icareModelParameters.modelDiseaseIncidenceRatesUrl);
+            icareModelParameters.modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(icareModelParameters.modelCompetingIncidenceRatesUrl);
+            icareModelParameters.modelCovariateFormulaUrl = self.getFileNameOrNone(icareModelParameters.modelCovariateFormulaUrl);
+            icareModelParameters.modelLogRelativeRiskUrl = self.getFileNameOrNone(icareModelParameters.modelLogRelativeRiskUrl);
+            icareModelParameters.modelReferenceDatasetUrl = self.getFileNameOrNone(icareModelParameters.modelReferenceDatasetUrl);
+            icareModelParameters.modelReferenceDatasetWeightsVariableName = self.valueOrNone(icareModelParameters.modelReferenceDatasetWeightsVariableName);
+            icareModelParameters.modelSnpInfoUrl = self.getFileNameOrNone(icareModelParameters.modelSnpInfoUrl);
+            icareModelParameters.modelFamilyHistoryVariableName = self.valueOrNone(icareModelParameters.modelFamilyHistoryVariableName);
+            icareModelParameters.numImputations = self.valueOrNone(icareModelParameters.numImputations);
+            icareModelParameters.applyCovariateProfileUrl = self.getFileNameOrNone(icareModelParameters.applyCovariateProfileUrl);
+            icareModelParameters.applySnpProfileUrl = self.getFileNameOrNone(icareModelParameters.applySnpProfileUrl);
+            icareModelParameters.returnLinearPredictors = icareModelParameters.returnLinearPredictors ? 'True' : 'False';
+            icareModelParameters.returnReferenceRisks = icareModelParameters.returnReferenceRisks ? 'True' : 'False';
+            icareModelParameters.seed = self.valueOrNone(icareModelParameters.seed);
+
+            icareModelParameters = `{
+  'apply_age_start': ${icareModelParameters.applyAgeStart},
+  'apply_age_interval_length': ${icareModelParameters.applyAgeIntervalLength},
+  'model_disease_incidence_rates_path': ${icareModelParameters.modelDiseaseIncidenceRatesUrl},
+  'model_competing_incidence_rates_path': ${icareModelParameters.modelCompetingIncidenceRatesUrl},
+  'model_covariate_formula_path': ${icareModelParameters.modelCovariateFormulaUrl},
+  'model_log_relative_risk_path': ${icareModelParameters.modelLogRelativeRiskUrl},
+  'model_reference_dataset_path': ${icareModelParameters.modelReferenceDatasetUrl},
+  'model_reference_dataset_weights_variable_name': ${icareModelParameters.modelReferenceDatasetWeightsVariableName},
+  'model_snp_info_path': ${icareModelParameters.modelSnpInfoUrl},
+  'model_family_history_variable_name': ${icareModelParameters.modelFamilyHistoryVariableName},
+  'num_imputations': ${icareModelParameters.numImputations},
+  'apply_covariate_profile_path': ${icareModelParameters.applyCovariateProfileUrl},
+  'apply_snp_profile_path': ${icareModelParameters.applySnpProfileUrl},
+  'return_linear_predictors': ${icareModelParameters.returnLinearPredictors},
+  'return_reference_risks': ${icareModelParameters.returnReferenceRisks},
+  'seed': ${icareModelParameters.seed}}`;
+        } else {
+            icareModelParameters = 'None'
+        }
+
+        const fileURLs = [studyDataUrl].filter(url => url !== undefined);
 
         await fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        const pyicareModelParameters = {
-            apply_age_start: icareModelParameters.applyAgeStart,
-            apply_age_interval_length: icareModelParameters.applyAgeIntervalLength,
-            model_disease_incidence_rates_path: icareModelParameters.modelDiseaseIncidenceRatesUrl ? icareModelParameters.modelDiseaseIncidenceRatesUrl.substring(icareModelParameters.modelDiseaseIncidenceRatesUrl.lastIndexOf('/') + 1) : undefined,
-            model_competing_incidence_rates_path: icareModelParameters.modelCompetingIncidenceRatesUrl ? icareModelParameters.modelCompetingIncidenceRatesUrl.substring(icareModelParameters.modelCompetingIncidenceRatesUrl.lastIndexOf('/') + 1) : undefined,
-            model_covariate_formula_path: icareModelParameters.modelCovariateFormulaUrl ? icareModelParameters.modelCovariateFormulaUrl.substring(icareModelParameters.modelCovariateFormulaUrl.lastIndexOf('/') + 1) : undefined,
-            model_log_relative_risk_path: icareModelParameters.modelLogRelativeRiskUrl ? icareModelParameters.modelLogRelativeRiskUrl.substring(icareModelParameters.modelLogRelativeRiskUrl.lastIndexOf('/') + 1) : undefined,
-            model_reference_dataset_path: icareModelParameters.modelReferenceDatasetUrl ? icareModelParameters.modelReferenceDatasetUrl.substring(icareModelParameters.modelReferenceDatasetUrl.lastIndexOf('/') + 1) : undefined,
-            model_reference_dataset_weights_variable_name: icareModelParameters.modelReferenceDatasetWeightsVariableName,
-            model_snp_info_path: icareModelParameters.modelSnpInfoUrl ? icareModelParameters.modelSnpInfoUrl.substring(icareModelParameters.modelSnpInfoUrl.lastIndexOf('/') + 1) : undefined,
-            model_family_history_variable_name: icareModelParameters.modelFamilyHistoryVariableName,
-            num_imputations: icareModelParameters.numImputations,
-            apply_covariate_profile_path: icareModelParameters.applyCovariateProfileUrl ? icareModelParameters.applyCovariateProfileUrl.substring(icareModelParameters.applyCovariateProfileUrl.lastIndexOf('/') + 1) : undefined,
-            apply_snp_profile_path: icareModelParameters.applySnpProfileUrl ? icareModelParameters.applySnpProfileUrl.substring(icareModelParameters.applySnpProfileUrl.lastIndexOf('/') + 1) : undefined,
-            return_linear_predictors: icareModelParameters.returnLinearPredictors,
-            return_reference_risks: icareModelParameters.returnReferenceRisks,
-            seed: icareModelParameters.seed,
-        };
+        studyDataUrl = self.getFileNameOrNone(studyDataUrl);
+        predictedRiskInterval = self.valueOrNone(predictedRiskInterval);
+        predictedRiskVariableName = self.valueOrNone(predictedRiskVariableName);
+        linearPredictorVariableName = self.valueOrNone(linearPredictorVariableName);
+        referenceEntryAge = self.valueOrNone(referenceEntryAge);
+        referenceExitAge = self.valueOrNone(referenceExitAge);
+        referencePredictedRisks = self.valueOrNone(referencePredictedRisks);
+        referenceLinearPredictors = self.valueOrNone(referenceLinearPredictors);
+        numberOfPercentiles = self.valueOrNone(numberOfPercentiles);
+        linearPredictorCutoffs = self.valueOrNone(linearPredictorCutoffs);
+        datasetName = self.valueOrNone(datasetName);
+        modelName = self.valueOrNone(modelName);
+        seed = self.valueOrNone(seed);
 
-        let result = self.icare.validate_absolute_risk_model(
-            studyDataUrl ? studyDataUrl.substring(studyDataUrl.lastIndexOf('/') + 1) : undefined,
-            predictedRiskInterval,
-            pyicareModelParameters,
-            predictedRiskVariableName,
-            linearPredictorVariableName,
-            referenceEntryAge,
-            referenceExitAge,
-            referencePredictedRisks,
-            referenceLinearPredictors,
-            numberOfPercentiles,
-            linearPredictorCutoffs,
-            datasetName,
-            modelName,
-            seed
-        ).toJs();
+        let result = pyodide.runPython(`
+result = icare.validate_absolute_risk_model(
+        study_data_path = ${studyDataUrl},
+        predicted_risk_interval = ${predictedRiskInterval},
+        icare_model_parameters = ${icareModelParameters},
+        predicted_risk_variable_name = ${predictedRiskVariableName},
+        linear_predictor_variable_name = ${linearPredictorVariableName},
+        reference_entry_age = ${referenceEntryAge},
+        reference_exit_age = ${referenceExitAge},
+        reference_predicted_risks = ${referencePredictedRisks},
+        reference_linear_predictors = ${referenceLinearPredictors},
+        number_of_percentiles = ${numberOfPercentiles},
+        linear_predictor_cutoffs = ${linearPredictorCutoffs},
+        dataset_name = ${datasetName},
+        model_name = ${modelName},
+        seed = ${seed})
+
+result
+`).toJs();
 
         if (result.isError) {
             throw new Error(result.message);
         }
 
         result = self.convertICareOutputToJSON(result);
+        result['study_data'] = JSON.parse(result['study_data']);
+        result['incidence_rates'] = JSON.parse(result['incidence_rates']);
+        result['category_specific_calibration'] = JSON.parse(result['category_specific_calibration']);
 
         return result;
     }
