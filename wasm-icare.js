@@ -41,7 +41,7 @@ function loadScript(url) {
  */
 async function loadICare() {
     if (!pyodide) {
-        throw new Error('Pyodide is not loaded. Please initialize this library using the initialize() function.');
+        throw new Error('Pyodide is not loaded.');
     }
 
     await pyodide.loadPackage('micropip');
@@ -831,12 +831,13 @@ result
  * @returns {Promise<iCARE>}
  */
 async function loadWasmICare() {
-    loadScript(pyodideCdnUrl)
-        .then(async () => {
-            const rootPyodide = pyodideCdnUrl.substring(0, pyodideCdnUrl.lastIndexOf('/') + 1)
-            pyodide = await loadPyodide({indexURL: rootPyodide});
-        })
-        .catch(console.error);
+    try {
+        await loadScript(pyodideCdnUrl);
+        const rootPyodide = pyodideCdnUrl.substring(0, pyodideCdnUrl.lastIndexOf('/') + 1);
+        pyodide = await window.loadPyodide({indexURL: rootPyodide});
+    } catch (error) {
+        console.error(error);
+    }
     const icare = await loadICare();
     return new iCARE(icare);
 }
