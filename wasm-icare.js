@@ -2,6 +2,8 @@
  * @module wasm-icare
  */
 
+import {loadPyodide} from 'https://cdn.jsdelivr.net/pyodide/v0.23.2/full/pyodide.js';
+
 /**
  * Version of the iCARE Python package to load from PyPI.
  * @type {string}
@@ -9,36 +11,10 @@
 let pyICareVersion = '1.0.0';
 
 /**
- * URL to the Pyodide CDN
- * @type {string}
- */
-let pyodideCDNURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.2/full/pyodide.js';
-
-/**
  * Global variable to hold the instance of Pyodide
  * @type {object}
  */
 let pyodide = null;
-
-/**
- * Function to load Pyodide from the CDN.
- * @async
- * @function
- * @returns {Promise<void>}
- */
-async function loadPyodideFromCDN() {
-    if (!pyodide) {
-        const script = document.createElement('script');
-        script.src = pyodideCDNURL;
-        document.body.appendChild(script);
-
-        await new Promise((resolve) => {
-            script.onload = resolve;
-        });
-
-        pyodide = await window.loadPyodide();
-    }
-}
 
 /**
  * Function to load the iCARE Python package and convert it into Wasm. Return the Wasm-iCARE object.
@@ -836,7 +812,7 @@ result
  * @returns {Promise<iCARE>}
  */
 async function loadWasmICare() {
-    await loadPyodideFromCDN();
+    pyodide = await loadPyodide();
     const icare = await loadICare();
     return new iCARE(icare);
 }
