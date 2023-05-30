@@ -74,7 +74,7 @@ class iCARE {
     }
 
     getFileNameOrNone(url) {
-        return url ? JSON.stringify(self.getFileNameFromUrl(url)) : 'None';
+        return url ? JSON.stringify(this.getFileNameFromUrl(url)) : 'None';
     }
 
     valueOrNone(value) {
@@ -262,24 +262,24 @@ class iCARE {
             applySnpProfileUrl,
         ].filter(url => url !== undefined);
 
-        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
+        await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = self.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaUrl = self.getFileNameOrNone(modelCovariateFormulaUrl);
-        modelLogRelativeRiskUrl = self.getFileNameOrNone(modelLogRelativeRiskUrl);
-        modelReferenceDatasetUrl = self.getFileNameOrNone(modelReferenceDatasetUrl);
-        modelReferenceDatasetWeightsVariableName = self.valueOrNone(modelReferenceDatasetWeightsVariableName);
-        modelSnpInfoUrl = self.getFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableName = self.valueOrNone(modelFamilyHistoryVariableName);
-        numImputations = self.valueOrNone(numImputations);
-        applyCovariateProfileUrl = self.getFileNameOrNone(applyCovariateProfileUrl);
-        applySnpProfileUrl = self.getFileNameOrNone(applySnpProfileUrl);
+        applyAgeStart = this.valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = this.valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaUrl = this.getFileNameOrNone(modelCovariateFormulaUrl);
+        modelLogRelativeRiskUrl = this.getFileNameOrNone(modelLogRelativeRiskUrl);
+        modelReferenceDatasetUrl = this.getFileNameOrNone(modelReferenceDatasetUrl);
+        modelReferenceDatasetWeightsVariableName = this.valueOrNone(modelReferenceDatasetWeightsVariableName);
+        modelSnpInfoUrl = this.getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableName = this.valueOrNone(modelFamilyHistoryVariableName);
+        numImputations = this.valueOrNone(numImputations);
+        applyCovariateProfileUrl = this.getFileNameOrNone(applyCovariateProfileUrl);
+        applySnpProfileUrl = this.getFileNameOrNone(applySnpProfileUrl);
         returnLinearPredictors = returnLinearPredictors ? 'True' : 'False';
         returnReferenceRisks = returnReferenceRisks ? 'True' : 'False';
-        seed = self.valueOrNone(seed);
+        seed = this.valueOrNone(seed);
 
         let result = pyodide.runPython(`
 result = icare.compute_absolute_risk(
@@ -308,7 +308,7 @@ result
             throw new Error(result.message);
         }
 
-        result = self.convertICareOutputToJSON(result);
+        result = this.convertICareOutputToJSON(result);
         result['profile'] = JSON.parse(result['profile'])
 
         return result;
@@ -481,31 +481,31 @@ result
             applySnpProfileUrl,
         ].filter(url => url !== undefined);
 
-        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
+        await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = self.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = self.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaBeforeCutpointUrl = self.getFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
-        modelCovariateFormulaAfterCutpointUrl = self.getFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
-        modelLogRelativeRiskBeforeCutpointUrl = self.getFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
-        modelLogRelativeRiskAfterCutpointUrl = self.getFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
-        modelReferenceDatasetBeforeCutpointUrl = self.getFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
-        modelReferenceDatasetAfterCutpointUrl = self.getFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
-        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = self.valueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
-        modelReferenceDatasetWeightsVariableNameAfterCutpoint = self.valueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
-        modelSnpInfoUrl = self.getFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableNameBeforeCutpoint = self.valueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
-        modelFamilyHistoryVariableNameAfterCutpoint = self.valueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
-        applyCovariateProfileBeforeCutpointUrl = self.getFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
-        applyCovariateProfileAfterCutpointUrl = self.getFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
-        applySnpProfileUrl = self.getFileNameOrNone(applySnpProfileUrl);
-        cutpoint = self.valueOrNone(cutpoint);
-        numImputations = self.valueOrNone(numImputations);
-        returnLinearPredictors = self.returnLinearPredictors ? 'True' : 'False';
-        returnReferenceRisks = self.returnReferenceRisks ? 'True' : 'False';
-        seed = self.valueOrNone(seed);
+        applyAgeStart = this.valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = this.valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaBeforeCutpointUrl = this.getFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
+        modelCovariateFormulaAfterCutpointUrl = this.getFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
+        modelLogRelativeRiskBeforeCutpointUrl = this.getFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
+        modelLogRelativeRiskAfterCutpointUrl = this.getFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
+        modelReferenceDatasetBeforeCutpointUrl = this.getFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
+        modelReferenceDatasetAfterCutpointUrl = this.getFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
+        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = this.valueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
+        modelReferenceDatasetWeightsVariableNameAfterCutpoint = this.valueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
+        modelSnpInfoUrl = this.getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableNameBeforeCutpoint = this.valueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
+        modelFamilyHistoryVariableNameAfterCutpoint = this.valueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
+        applyCovariateProfileBeforeCutpointUrl = this.getFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
+        applyCovariateProfileAfterCutpointUrl = this.getFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
+        applySnpProfileUrl = this.getFileNameOrNone(applySnpProfileUrl);
+        cutpoint = this.valueOrNone(cutpoint);
+        numImputations = this.valueOrNone(numImputations);
+        returnLinearPredictors = this.returnLinearPredictors ? 'True' : 'False';
+        returnReferenceRisks = this.returnReferenceRisks ? 'True' : 'False';
+        seed = this.valueOrNone(seed);
 
         let result = pyodide.runPython(`
 result = icare.compute_absolute_risk_split_interval(
@@ -540,7 +540,7 @@ result
             throw new Error(result.message);
         }
 
-        result = self.convertICareOutputToJSON(result);
+        result = this.convertICareOutputToJSON(result);
         result['profile'] = JSON.parse(result['profile']);
 
         return result;
@@ -738,24 +738,24 @@ result
                 icareModelParameters.applySnpProfileUrl,
             ].filter(url => url !== undefined);
 
-            await self.fetchFilesAndWriteToPyodideFS(fileURLs);
+            await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-            icareModelParameters.applyAgeStart = self.valueOrNone(icareModelParameters.applyAgeStart);
-            icareModelParameters.applyAgeIntervalLength = self.valueOrNone(icareModelParameters.applyAgeIntervalLength);
-            icareModelParameters.modelDiseaseIncidenceRatesUrl = self.getFileNameOrNone(icareModelParameters.modelDiseaseIncidenceRatesUrl);
-            icareModelParameters.modelCompetingIncidenceRatesUrl = self.getFileNameOrNone(icareModelParameters.modelCompetingIncidenceRatesUrl);
-            icareModelParameters.modelCovariateFormulaUrl = self.getFileNameOrNone(icareModelParameters.modelCovariateFormulaUrl);
-            icareModelParameters.modelLogRelativeRiskUrl = self.getFileNameOrNone(icareModelParameters.modelLogRelativeRiskUrl);
-            icareModelParameters.modelReferenceDatasetUrl = self.getFileNameOrNone(icareModelParameters.modelReferenceDatasetUrl);
-            icareModelParameters.modelReferenceDatasetWeightsVariableName = self.valueOrNone(icareModelParameters.modelReferenceDatasetWeightsVariableName);
-            icareModelParameters.modelSnpInfoUrl = self.getFileNameOrNone(icareModelParameters.modelSnpInfoUrl);
-            icareModelParameters.modelFamilyHistoryVariableName = self.valueOrNone(icareModelParameters.modelFamilyHistoryVariableName);
-            icareModelParameters.numImputations = self.valueOrNone(icareModelParameters.numImputations);
-            icareModelParameters.applyCovariateProfileUrl = self.getFileNameOrNone(icareModelParameters.applyCovariateProfileUrl);
-            icareModelParameters.applySnpProfileUrl = self.getFileNameOrNone(icareModelParameters.applySnpProfileUrl);
+            icareModelParameters.applyAgeStart = this.valueOrNone(icareModelParameters.applyAgeStart);
+            icareModelParameters.applyAgeIntervalLength = this.valueOrNone(icareModelParameters.applyAgeIntervalLength);
+            icareModelParameters.modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(icareModelParameters.modelDiseaseIncidenceRatesUrl);
+            icareModelParameters.modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(icareModelParameters.modelCompetingIncidenceRatesUrl);
+            icareModelParameters.modelCovariateFormulaUrl = this.getFileNameOrNone(icareModelParameters.modelCovariateFormulaUrl);
+            icareModelParameters.modelLogRelativeRiskUrl = this.getFileNameOrNone(icareModelParameters.modelLogRelativeRiskUrl);
+            icareModelParameters.modelReferenceDatasetUrl = this.getFileNameOrNone(icareModelParameters.modelReferenceDatasetUrl);
+            icareModelParameters.modelReferenceDatasetWeightsVariableName = this.valueOrNone(icareModelParameters.modelReferenceDatasetWeightsVariableName);
+            icareModelParameters.modelSnpInfoUrl = this.getFileNameOrNone(icareModelParameters.modelSnpInfoUrl);
+            icareModelParameters.modelFamilyHistoryVariableName = this.valueOrNone(icareModelParameters.modelFamilyHistoryVariableName);
+            icareModelParameters.numImputations = this.valueOrNone(icareModelParameters.numImputations);
+            icareModelParameters.applyCovariateProfileUrl = this.getFileNameOrNone(icareModelParameters.applyCovariateProfileUrl);
+            icareModelParameters.applySnpProfileUrl = this.getFileNameOrNone(icareModelParameters.applySnpProfileUrl);
             icareModelParameters.returnLinearPredictors = icareModelParameters.returnLinearPredictors ? 'True' : 'False';
             icareModelParameters.returnReferenceRisks = icareModelParameters.returnReferenceRisks ? 'True' : 'False';
-            icareModelParameters.seed = self.valueOrNone(icareModelParameters.seed);
+            icareModelParameters.seed = this.valueOrNone(icareModelParameters.seed);
 
             icareModelParameters = `{
   'apply_age_start': ${icareModelParameters.applyAgeStart},
@@ -780,21 +780,21 @@ result
 
         const fileURLs = [studyDataUrl].filter(url => url !== undefined);
 
-        await self.fetchFilesAndWriteToPyodideFS(fileURLs);
+        await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        studyDataUrl = self.getFileNameOrNone(studyDataUrl);
-        predictedRiskInterval = self.valueOrNone(predictedRiskInterval);
-        predictedRiskVariableName = self.valueOrNone(predictedRiskVariableName);
-        linearPredictorVariableName = self.valueOrNone(linearPredictorVariableName);
-        referenceEntryAge = self.valueOrNone(referenceEntryAge);
-        referenceExitAge = self.valueOrNone(referenceExitAge);
-        referencePredictedRisks = self.valueOrNone(referencePredictedRisks);
-        referenceLinearPredictors = self.valueOrNone(referenceLinearPredictors);
-        numberOfPercentiles = self.valueOrNone(numberOfPercentiles);
-        linearPredictorCutoffs = self.valueOrNone(linearPredictorCutoffs);
-        datasetName = self.valueOrNone(datasetName);
-        modelName = self.valueOrNone(modelName);
-        seed = self.valueOrNone(seed);
+        studyDataUrl = this.getFileNameOrNone(studyDataUrl);
+        predictedRiskInterval = this.valueOrNone(predictedRiskInterval);
+        predictedRiskVariableName = this.valueOrNone(predictedRiskVariableName);
+        linearPredictorVariableName = this.valueOrNone(linearPredictorVariableName);
+        referenceEntryAge = this.valueOrNone(referenceEntryAge);
+        referenceExitAge = this.valueOrNone(referenceExitAge);
+        referencePredictedRisks = this.valueOrNone(referencePredictedRisks);
+        referenceLinearPredictors = this.valueOrNone(referenceLinearPredictors);
+        numberOfPercentiles = this.valueOrNone(numberOfPercentiles);
+        linearPredictorCutoffs = this.valueOrNone(linearPredictorCutoffs);
+        datasetName = this.valueOrNone(datasetName);
+        modelName = this.valueOrNone(modelName);
+        seed = this.valueOrNone(seed);
 
         let result = pyodide.runPython(`
 result = icare.validate_absolute_risk_model(
@@ -820,7 +820,7 @@ result
             throw new Error(result.message);
         }
 
-        result = self.convertICareOutputToJSON(result);
+        result = this.convertICareOutputToJSON(result);
         result['study_data'] = JSON.parse(result['study_data']);
         result['incidence_rates'] = JSON.parse(result['incidence_rates']);
         result['category_specific_calibration'] = JSON.parse(result['category_specific_calibration']);
