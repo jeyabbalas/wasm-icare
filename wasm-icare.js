@@ -3,87 +3,63 @@
  */
 
 /**
- * Version of the iCARE Python package to load from PyPI.
- * @type {string}
- */
-let pyICareVersion = '1.0.0';
-
-/**
- * URL to the Pyodide CDN
- * @type {string}
- */
-let pyodideCdnUrl = 'https://cdn.jsdelivr.net/pyodide/v0.23.2/full/pyodide.js';
-
-/**
- * Global variable to hold the instance of Pyodide
- * @type {object}
- */
-let pyodide = null;
-
-/**
- * Helper to dynamically load Pyodide.
- * @param url
- * @returns {Promise<unknown>}
- */
-function loadScript(url) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.append(script);
-    });
-}
-
-/**
- * Function to load the iCARE Python package and convert it into Wasm. Return the Wasm-iCARE object.
- * @returns {Promise<*>}
- */
-async function loadICare() {
-    if (!pyodide) {
-        throw new Error('Pyodide is not loaded.');
-    }
-
-    await pyodide.loadPackage('micropip');
-    const micropip = pyodide.pyimport('micropip');
-    await micropip.install('pyicare=='.concat(pyICareVersion));
-
-    return pyodide.runPython(`import icare
-icare`);
-}
-
-/**
  * Wrapper class to hold the iCARE Wasm object and add web-specific functionalities to its methods.
  * @class
  * @property {object} icare - The iCARE Wasm object.
  * @property {string} __version__ - The version of the iCARE Python package.
  */
-class iCARE {
-    constructor(icare) {
-        this.icare = icare;
-        this.__version__ = icare.__version__;
+class WasmICARE {
+    /**
+     * Constructor for the WasmICARE class. This class is not meant to be instantiated directly. Use the
+     * 'initialize()' method to instantiate this class.
+     */
+    constructor() {
+        this.version = '1.0.0';
+        // Version of the iCARE Python package to load from PyPI.
+        this.pyICareVersion = '1.0.0';
+        // Version of Pyodide to load from the CDN.
+        this.pyodideVersion = '0.23.2';
+        // URL to load Pyodide from the CDN.
+        this.pyodideEsmUrl = 'https://cdn.jsdelivr.net/npm/pyodide@' + this.pyodideVersion + '/+esm';
+        // URL to the location of Python packages on the CDN.
+        this.pyodideRootUrl = 'https://cdn.jsdelivr.net/pyodide/v' + this.pyodideVersion + '/full/';
     }
 
-    getFileNameFromUrl(url) {
-        return url.substring(url.lastIndexOf('/') + 1);
+    /**
+     * Factory method to instantiate the WasmICARE class.
+     * @returns {Promise<WasmICARE>}
+     */
+    static async initialize() {
+        const instance = new WasmICARE();
+        // instantiate Pyodide
+        instance.pyodide = await (await import(instance.pyodideEsmUrl)).loadPyodide({indexURL: instance.pyodideRootUrl});
+
+        // instantiate iCARE
+        await instance.pyodide.loadPackage('micropip');
+        const micropip = instance.pyodide.pyimport('micropip');
+        await micropip.install('pyicare=='.concat(instance.pyICareVersion));
+        instance.pyodide.runPython(`import icare`);
+
+        return instance;
     }
 
-    getFileNameOrNone(url) {
-        return url ? JSON.stringify(this.getFileNameFromUrl(url)) : 'None';
+    _getFileNameOrNone(url) {
+        const fileName = url.substring(url.lastIndexOf('/') + 1);
+        return url ? JSON.stringify(fileName) : 'None';
     }
 
-    valueOrNone(value) {
+    _valueOrNone(value) {
         return value ? JSON.stringify(value) : 'None';
     }
 
     /**
-     * Function to load files from a list of URLs and write them to the Pyodide file system.
+     * Method to load files from a list of URLs and write them to the Pyodide file system.
      * @param fileURLs
      * @returns {Promise<Awaited<unknown>[]>}
      */
     async fetchFilesAndWriteToPyodideFS(fileURLs) {
-        if (!pyodide) {
-            throw new Error('Pyodide is not loaded. Please initialize this library using the loadWasmICare() function.');
+        if (!this.pyodide) {
+            throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
         }
 
         async function fetchAndWriteFile(url) {
@@ -97,9 +73,8 @@ class iCARE {
 
                 const fileContent = await response.text();
                 const fileName = url.substring(url.lastIndexOf('/') + 1);
-                pyodide.FS.writeFile(fileName, fileContent);
+                this.pyodide.FS.writeFile(fileName, fileContent);
 
-                console.log(`File ${fileName} successfully loaded to the Pyodide file system.`);
                 return {isError: false, message: `File ${fileName} successfully loaded to the Pyodide file system.`};
             } catch (error) {
                 console.error(`Error fetching and writing file: ${error.message}`);
@@ -111,28 +86,28 @@ class iCARE {
     }
 
     /**
-     * Function to convert the Wasm-iCARE output to JSON.
+     * Method to convert the Wasm-iCARE output to JSON.
      * @param obj
      * @returns {{}|*}
      */
-    convertICareOutputToJSON(obj) {
+    convertOutputToJSON(obj) {
         if (obj instanceof Map) {
             const result = {};
             obj.forEach((value, key) => {
-                result[key] = this.convertICareOutputToJSON(value);
+                result[key] = this.convertOutputToJSON(value);
             });
             return result;
         }
 
         if (Array.isArray(obj)) {
-            return obj.map((item) => this.convertICareOutputToJSON(item));
+            return obj.map((item) => this.convertOutputToJSON(item));
         }
 
         return obj;
     }
 
     /**
-     * This function is used to build absolute risk models and apply them to estimate absolute risks.
+     * This method is used to build absolute risk models and apply them to estimate absolute risks.
      * @async
      * @function
      * @param applyAgeStart
@@ -242,8 +217,8 @@ class iCARE {
             returnReferenceRisks = false,
             seed = 1234,
         }) {
-        if (!pyodide) {
-            throw new Error('Pyodide is not loaded. Please initialize this library using the loadWasmICare() function.');
+        if (!this.pyodide) {
+            throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
         }
 
         const fileURLs = [
@@ -259,24 +234,24 @@ class iCARE {
 
         await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = this.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = this.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaUrl = this.getFileNameOrNone(modelCovariateFormulaUrl);
-        modelLogRelativeRiskUrl = this.getFileNameOrNone(modelLogRelativeRiskUrl);
-        modelReferenceDatasetUrl = this.getFileNameOrNone(modelReferenceDatasetUrl);
-        modelReferenceDatasetWeightsVariableName = this.valueOrNone(modelReferenceDatasetWeightsVariableName);
-        modelSnpInfoUrl = this.getFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableName = this.valueOrNone(modelFamilyHistoryVariableName);
-        numImputations = this.valueOrNone(numImputations);
-        applyCovariateProfileUrl = this.getFileNameOrNone(applyCovariateProfileUrl);
-        applySnpProfileUrl = this.getFileNameOrNone(applySnpProfileUrl);
+        applyAgeStart = this._valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = this._valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = this._getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = this._getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaUrl = this._getFileNameOrNone(modelCovariateFormulaUrl);
+        modelLogRelativeRiskUrl = this._getFileNameOrNone(modelLogRelativeRiskUrl);
+        modelReferenceDatasetUrl = this._getFileNameOrNone(modelReferenceDatasetUrl);
+        modelReferenceDatasetWeightsVariableName = this._valueOrNone(modelReferenceDatasetWeightsVariableName);
+        modelSnpInfoUrl = this._getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableName = this._valueOrNone(modelFamilyHistoryVariableName);
+        numImputations = this._valueOrNone(numImputations);
+        applyCovariateProfileUrl = this._getFileNameOrNone(applyCovariateProfileUrl);
+        applySnpProfileUrl = this._getFileNameOrNone(applySnpProfileUrl);
         returnLinearPredictors = returnLinearPredictors ? 'True' : 'False';
         returnReferenceRisks = returnReferenceRisks ? 'True' : 'False';
-        seed = this.valueOrNone(seed);
+        seed = this._valueOrNone(seed);
 
-        let result = pyodide.runPython(`
+        let result = this.pyodide.runPython(`
 result = icare.compute_absolute_risk(
   apply_age_start = ${applyAgeStart},
   apply_age_interval_length = ${applyAgeIntervalLength},
@@ -303,14 +278,14 @@ result
             throw new Error(result.message);
         }
 
-        result = this.convertICareOutputToJSON(result);
+        result = this.convertOutputToJSON(result);
         result['profile'] = JSON.parse(result['profile'])
 
         return result;
     }
 
     /**
-     * This function is used to build an absolute risk model that incorporates different input parameters before and
+     * This method is used to build an absolute risk model that incorporates different input parameters before and
      * after a given time cut-point. The model is then applied to estimate the combined absolute risks.
      * @async
      * @function
@@ -457,8 +432,8 @@ result
             returnReferenceRisks = false,
             seed = 1234,
         }) {
-        if (!pyodide) {
-            throw new Error('Pyodide is not loaded. Please initialize this library using the loadWasmICare() function.');
+        if (!this.pyodide) {
+            throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
         }
 
         const fileURLs = [
@@ -478,31 +453,31 @@ result
 
         await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        applyAgeStart = this.valueOrNone(applyAgeStart);
-        applyAgeIntervalLength = this.valueOrNone(applyAgeIntervalLength);
-        modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
-        modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(modelCompetingIncidenceRatesUrl);
-        modelCovariateFormulaBeforeCutpointUrl = this.getFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
-        modelCovariateFormulaAfterCutpointUrl = this.getFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
-        modelLogRelativeRiskBeforeCutpointUrl = this.getFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
-        modelLogRelativeRiskAfterCutpointUrl = this.getFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
-        modelReferenceDatasetBeforeCutpointUrl = this.getFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
-        modelReferenceDatasetAfterCutpointUrl = this.getFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
-        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = this.valueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
-        modelReferenceDatasetWeightsVariableNameAfterCutpoint = this.valueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
-        modelSnpInfoUrl = this.getFileNameOrNone(modelSnpInfoUrl);
-        modelFamilyHistoryVariableNameBeforeCutpoint = this.valueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
-        modelFamilyHistoryVariableNameAfterCutpoint = this.valueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
-        applyCovariateProfileBeforeCutpointUrl = this.getFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
-        applyCovariateProfileAfterCutpointUrl = this.getFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
-        applySnpProfileUrl = this.getFileNameOrNone(applySnpProfileUrl);
-        cutpoint = this.valueOrNone(cutpoint);
-        numImputations = this.valueOrNone(numImputations);
-        returnLinearPredictors = this.returnLinearPredictors ? 'True' : 'False';
-        returnReferenceRisks = this.returnReferenceRisks ? 'True' : 'False';
-        seed = this.valueOrNone(seed);
+        applyAgeStart = this._valueOrNone(applyAgeStart);
+        applyAgeIntervalLength = this._valueOrNone(applyAgeIntervalLength);
+        modelDiseaseIncidenceRatesUrl = this._getFileNameOrNone(modelDiseaseIncidenceRatesUrl);
+        modelCompetingIncidenceRatesUrl = this._getFileNameOrNone(modelCompetingIncidenceRatesUrl);
+        modelCovariateFormulaBeforeCutpointUrl = this._getFileNameOrNone(modelCovariateFormulaBeforeCutpointUrl);
+        modelCovariateFormulaAfterCutpointUrl = this._getFileNameOrNone(modelCovariateFormulaAfterCutpointUrl);
+        modelLogRelativeRiskBeforeCutpointUrl = this._getFileNameOrNone(modelLogRelativeRiskBeforeCutpointUrl);
+        modelLogRelativeRiskAfterCutpointUrl = this._getFileNameOrNone(modelLogRelativeRiskAfterCutpointUrl);
+        modelReferenceDatasetBeforeCutpointUrl = this._getFileNameOrNone(modelReferenceDatasetBeforeCutpointUrl);
+        modelReferenceDatasetAfterCutpointUrl = this._getFileNameOrNone(modelReferenceDatasetAfterCutpointUrl);
+        modelReferenceDatasetWeightsVariableNameBeforeCutpoint = this._valueOrNone(modelReferenceDatasetWeightsVariableNameBeforeCutpoint);
+        modelReferenceDatasetWeightsVariableNameAfterCutpoint = this._valueOrNone(modelReferenceDatasetWeightsVariableNameAfterCutpoint);
+        modelSnpInfoUrl = this._getFileNameOrNone(modelSnpInfoUrl);
+        modelFamilyHistoryVariableNameBeforeCutpoint = this._valueOrNone(modelFamilyHistoryVariableNameBeforeCutpoint);
+        modelFamilyHistoryVariableNameAfterCutpoint = this._valueOrNone(modelFamilyHistoryVariableNameAfterCutpoint);
+        applyCovariateProfileBeforeCutpointUrl = this._getFileNameOrNone(applyCovariateProfileBeforeCutpointUrl);
+        applyCovariateProfileAfterCutpointUrl = this._getFileNameOrNone(applyCovariateProfileAfterCutpointUrl);
+        applySnpProfileUrl = this._getFileNameOrNone(applySnpProfileUrl);
+        cutpoint = this._valueOrNone(cutpoint);
+        numImputations = this._valueOrNone(numImputations);
+        returnLinearPredictors = returnLinearPredictors ? 'True' : 'False';
+        returnReferenceRisks = returnReferenceRisks ? 'True' : 'False';
+        seed = this._valueOrNone(seed);
 
-        let result = pyodide.runPython(`
+        let result = this.pyodide.runPython(`
 result = icare.compute_absolute_risk_split_interval(
         apply_age_start = ${applyAgeStart},
         apply_age_interval_length = ${applyAgeIntervalLength},
@@ -535,7 +510,7 @@ result
             throw new Error(result.message);
         }
 
-        result = this.convertICareOutputToJSON(result);
+        result = this.convertOutputToJSON(result);
         result['profile'] = JSON.parse(result['profile']);
 
         return result;
@@ -702,6 +677,10 @@ result
             modelName = 'Example risk prediction model',
             seed = 1234,
         }) {
+        if (!this.pyodide) {
+            throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
+        }
+
         icareModelParameters = Object.assign({
             applyAgeStart: undefined,
             applyAgeIntervalLength: undefined,
@@ -735,22 +714,22 @@ result
 
             await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-            icareModelParameters.applyAgeStart = this.valueOrNone(icareModelParameters.applyAgeStart);
-            icareModelParameters.applyAgeIntervalLength = this.valueOrNone(icareModelParameters.applyAgeIntervalLength);
-            icareModelParameters.modelDiseaseIncidenceRatesUrl = this.getFileNameOrNone(icareModelParameters.modelDiseaseIncidenceRatesUrl);
-            icareModelParameters.modelCompetingIncidenceRatesUrl = this.getFileNameOrNone(icareModelParameters.modelCompetingIncidenceRatesUrl);
-            icareModelParameters.modelCovariateFormulaUrl = this.getFileNameOrNone(icareModelParameters.modelCovariateFormulaUrl);
-            icareModelParameters.modelLogRelativeRiskUrl = this.getFileNameOrNone(icareModelParameters.modelLogRelativeRiskUrl);
-            icareModelParameters.modelReferenceDatasetUrl = this.getFileNameOrNone(icareModelParameters.modelReferenceDatasetUrl);
-            icareModelParameters.modelReferenceDatasetWeightsVariableName = this.valueOrNone(icareModelParameters.modelReferenceDatasetWeightsVariableName);
-            icareModelParameters.modelSnpInfoUrl = this.getFileNameOrNone(icareModelParameters.modelSnpInfoUrl);
-            icareModelParameters.modelFamilyHistoryVariableName = this.valueOrNone(icareModelParameters.modelFamilyHistoryVariableName);
-            icareModelParameters.numImputations = this.valueOrNone(icareModelParameters.numImputations);
-            icareModelParameters.applyCovariateProfileUrl = this.getFileNameOrNone(icareModelParameters.applyCovariateProfileUrl);
-            icareModelParameters.applySnpProfileUrl = this.getFileNameOrNone(icareModelParameters.applySnpProfileUrl);
+            icareModelParameters.applyAgeStart = this._valueOrNone(icareModelParameters.applyAgeStart);
+            icareModelParameters.applyAgeIntervalLength = this._valueOrNone(icareModelParameters.applyAgeIntervalLength);
+            icareModelParameters.modelDiseaseIncidenceRatesUrl = this._getFileNameOrNone(icareModelParameters.modelDiseaseIncidenceRatesUrl);
+            icareModelParameters.modelCompetingIncidenceRatesUrl = this._getFileNameOrNone(icareModelParameters.modelCompetingIncidenceRatesUrl);
+            icareModelParameters.modelCovariateFormulaUrl = this._getFileNameOrNone(icareModelParameters.modelCovariateFormulaUrl);
+            icareModelParameters.modelLogRelativeRiskUrl = this._getFileNameOrNone(icareModelParameters.modelLogRelativeRiskUrl);
+            icareModelParameters.modelReferenceDatasetUrl = this._getFileNameOrNone(icareModelParameters.modelReferenceDatasetUrl);
+            icareModelParameters.modelReferenceDatasetWeightsVariableName = this._valueOrNone(icareModelParameters.modelReferenceDatasetWeightsVariableName);
+            icareModelParameters.modelSnpInfoUrl = this._getFileNameOrNone(icareModelParameters.modelSnpInfoUrl);
+            icareModelParameters.modelFamilyHistoryVariableName = this._valueOrNone(icareModelParameters.modelFamilyHistoryVariableName);
+            icareModelParameters.numImputations = this._valueOrNone(icareModelParameters.numImputations);
+            icareModelParameters.applyCovariateProfileUrl = this._getFileNameOrNone(icareModelParameters.applyCovariateProfileUrl);
+            icareModelParameters.applySnpProfileUrl = this._getFileNameOrNone(icareModelParameters.applySnpProfileUrl);
             icareModelParameters.returnLinearPredictors = icareModelParameters.returnLinearPredictors ? 'True' : 'False';
             icareModelParameters.returnReferenceRisks = icareModelParameters.returnReferenceRisks ? 'True' : 'False';
-            icareModelParameters.seed = this.valueOrNone(icareModelParameters.seed);
+            icareModelParameters.seed = this._valueOrNone(icareModelParameters.seed);
 
             icareModelParameters = `{
   'apply_age_start': ${icareModelParameters.applyAgeStart},
@@ -777,21 +756,21 @@ result
 
         await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
-        studyDataUrl = this.getFileNameOrNone(studyDataUrl);
-        predictedRiskInterval = this.valueOrNone(predictedRiskInterval);
-        predictedRiskVariableName = this.valueOrNone(predictedRiskVariableName);
-        linearPredictorVariableName = this.valueOrNone(linearPredictorVariableName);
-        referenceEntryAge = this.valueOrNone(referenceEntryAge);
-        referenceExitAge = this.valueOrNone(referenceExitAge);
-        referencePredictedRisks = this.valueOrNone(referencePredictedRisks);
-        referenceLinearPredictors = this.valueOrNone(referenceLinearPredictors);
-        numberOfPercentiles = this.valueOrNone(numberOfPercentiles);
-        linearPredictorCutoffs = this.valueOrNone(linearPredictorCutoffs);
-        datasetName = this.valueOrNone(datasetName);
-        modelName = this.valueOrNone(modelName);
-        seed = this.valueOrNone(seed);
+        studyDataUrl = this._getFileNameOrNone(studyDataUrl);
+        predictedRiskInterval = this._valueOrNone(predictedRiskInterval);
+        predictedRiskVariableName = this._valueOrNone(predictedRiskVariableName);
+        linearPredictorVariableName = this._valueOrNone(linearPredictorVariableName);
+        referenceEntryAge = this._valueOrNone(referenceEntryAge);
+        referenceExitAge = this._valueOrNone(referenceExitAge);
+        referencePredictedRisks = this._valueOrNone(referencePredictedRisks);
+        referenceLinearPredictors = this._valueOrNone(referenceLinearPredictors);
+        numberOfPercentiles = this._valueOrNone(numberOfPercentiles);
+        linearPredictorCutoffs = this._valueOrNone(linearPredictorCutoffs);
+        datasetName = this._valueOrNone(datasetName);
+        modelName = this._valueOrNone(modelName);
+        seed = this._valueOrNone(seed);
 
-        let result = pyodide.runPython(`
+        let result = this.pyodide.runPython(`
 result = icare.validate_absolute_risk_model(
         study_data_path = ${studyDataUrl},
         predicted_risk_interval = ${predictedRiskInterval},
@@ -815,7 +794,7 @@ result
             throw new Error(result.message);
         }
 
-        result = this.convertICareOutputToJSON(result);
+        result = this.convertOutputToJSON(result);
         result['study_data'] = JSON.parse(result['study_data']);
         result['incidence_rates'] = JSON.parse(result['incidence_rates']);
         result['category_specific_calibration'] = JSON.parse(result['category_specific_calibration']);
@@ -825,24 +804,15 @@ result
 }
 
 /**
- * Function to load Wasm-iCARE. It has the same functionalities as Py-iCARE.
+ * Function to load Wasm-iCARE. The returned class instance has all the functionalities of Py-iCARE.
  * @async
  * @function
- * @returns {Promise<iCARE>}
+ * @returns {Promise<WasmICARE>}
  */
-async function loadWasmICare() {
-    try {
-        await loadScript(pyodideCdnUrl);
-        const rootPyodide = pyodideCdnUrl.substring(0, pyodideCdnUrl.lastIndexOf('/') + 1);
-        pyodide = await window.loadPyodide({indexURL: rootPyodide});
-    } catch (error) {
-        console.error(error);
-    }
-    const icare = await loadICare();
-    return new iCARE(icare);
+async function loadWasmICARE() {
+    return await WasmICARE.initialize();
 }
 
 export {
-    loadWasmICare,
-    pyodide
+    loadWasmICARE
 };
