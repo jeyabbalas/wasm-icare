@@ -44,8 +44,7 @@ class WasmICARE {
     }
 
     _getFileNameOrNone(url) {
-        const fileName = url.substring(url.lastIndexOf('/') + 1);
-        return url ? JSON.stringify(fileName) : 'None';
+        return url ? JSON.stringify(url.substring(url.lastIndexOf('/') + 1)) : 'None';
     }
 
     _valueOrNone(value) {
@@ -62,23 +61,21 @@ class WasmICARE {
             throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
         }
 
-        async function fetchAndWriteFile(url) {
+        const fetchAndWriteFile = async (url) => {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch file from ${url}`);
+            }
+
             try {
-                const response = await fetch(url);
-
-                if (!response.ok) {
-                    console.error(`Failed to fetch file from ${url}`);
-                    return {isError: true, message: `Failed to fetch file from ${url}`};
-                }
-
                 const fileContent = await response.text();
                 const fileName = url.substring(url.lastIndexOf('/') + 1);
                 this.pyodide.FS.writeFile(fileName, fileContent);
 
                 return {isError: false, message: `File ${fileName} successfully loaded to the Pyodide file system.`};
             } catch (error) {
-                console.error(`Error fetching and writing file: ${error.message}`);
-                return {isError: true, message: `Error fetching and writing file: ${error.message}`};
+                throw new Error(`Error fetching and writing file: ${error.message}`);
             }
         }
 
