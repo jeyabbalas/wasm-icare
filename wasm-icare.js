@@ -14,15 +14,12 @@ class WasmICARE {
      * 'initialize()' method to instantiate this class.
      */
     constructor() {
+        // Wasm-iCARE version.
         this.version = '1.0.0';
         // Version of the iCARE Python package to load from PyPI.
         this.pyICareVersion = '1.0.0';
         // Version of Pyodide to load from the CDN.
         this.pyodideVersion = '0.23.2';
-        // URL to load Pyodide from the CDN.
-        this.pyodideEsmUrl = 'https://cdn.jsdelivr.net/npm/pyodide@' + this.pyodideVersion + '/+esm';
-        // URL to the location of Python packages on the CDN.
-        this.pyodideRootUrl = 'https://cdn.jsdelivr.net/pyodide/v' + this.pyodideVersion + '/full/';
     }
 
     /**
@@ -31,8 +28,11 @@ class WasmICARE {
      */
     static async initialize() {
         const instance = new WasmICARE();
+
         // instantiate Pyodide
-        instance.pyodide = await (await import(instance.pyodideEsmUrl)).loadPyodide({indexURL: instance.pyodideRootUrl});
+        const pyodideEsmUrl = 'https://cdn.jsdelivr.net/npm/pyodide@' + instance.pyodideVersion + '/+esm';
+        const pyodideRootUrl = 'https://cdn.jsdelivr.net/pyodide/v' + instance.pyodideVersion + '/full/';
+        instance.pyodide = await (await import(pyodideEsmUrl)).loadPyodide({indexURL: pyodideRootUrl});
 
         // instantiate iCARE
         await instance.pyodide.loadPackage('micropip');
