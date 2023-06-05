@@ -9,4 +9,19 @@ The ES6 library can be imported using jsDelivr CDN:
 
 ## Usage
 
-Observable notebooks.
+Wasm-iCARE is a library with three main methods:
+
+1. `compute_absolute_risk()`: a method to build and apply absolute risk models. Based on the type of risk factors present in the model and what information is available, there can be three broad variations in using this method:
+   1. **Special SNP-only absolute risk model**: this variation shows you how to specify a SNP-based absolute risk model without the need to provide a reference dataset to represent the risk factor distribution of the underlying population. [![Open In ObservableHQ](public/observableLogo.svg)](https://observablehq.com/@jeyabbalas/special-snp-risk-model?collection=@jeyabbalas/wasm-icare) 
+   2. **Covariate-only absolute risk model**: this option shows you how to specify a risk model with any type of covariates (including classical questionnaire-based risk factors and/or SNPs) so long as a reference dataset is available to represent the distribution of all the covariates in the underlying population. [![Open In ObservableHQ](public/observableLogo.svg)](https://observablehq.com/@jeyabbalas/covariate-risk-model?collection=@jeyabbalas/wasm-icare)
+   3. **Combined SNP and covariate absolute risk model**: this option shows you how to specify a risk model that contains both SNPs and other type of covariates, such that, you have the reference dataset to represent the distribution of the covariates in the underlying population but you do not have the reference dataset to represent the SNP distribution. [![Open In ObservableHQ](public/observableLogo.svg)](https://observablehq.com/@jeyabbalas/combined-risk-model?collection=@jeyabbalas/wasm-icare)
+2. `compute_absolute_risk_split_interval()`: a method to build and apply absolute risk models that relaxes the proportional hazard assumption, to some extent, by allowing you to specify different model parameters that vary before and after a cut-point in time. [![Open In ObservableHQ](public/observableLogo.svg)](https://observablehq.com/@jeyabbalas/absolute-risk-over-split-intervals?collection=@jeyabbalas/wasm-icare)
+3. `validate_absolute_risk_model()`: a method to validate absolute risk models on an independent cohort study data or a case-control study nested within a cohort. [![Open In ObservableHQ](public/observableLogo.svg)](https://observablehq.com/@jeyabbalas/risk-model-validation?collection=@jeyabbalas/wasm-icare)
+
+The Jupyter notebooks for all the use-cases described above is available at: https://observablehq.com/collection/@jeyabbalas/wasm-icare.
+
+## License
+Wasm-iCARE is open-source licensed under the MIT License.
+
+## References
+1. [Pal Choudhury, Parichoy, Paige Maas, Amber Wilcox, William Wheeler, Mark Brook, David Check, Montserrat Garcia-Closas, and Nilanjan Chatterjee. "iCARE: an R package to build, validate and apply absolute risk models." PloS one 15, no. 2 (2020): e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
