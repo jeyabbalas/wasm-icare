@@ -6,6 +6,12 @@ A WebAssembly port of the [iCARE Python package](https://github.com/jeyabbalas/p
 
 The ES6 library can be imported using jsDelivr CDN:
 
+```js
+import { loadWasmICARE } from 'https://cdn.jsdelivr.net/gh/jeyabbalas/wasm-icare@1.0.0/dist/wasm-icare.js';
+
+const icare = await loadWasmICARE();
+```
+
 
 ## Usage
 
