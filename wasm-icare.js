@@ -15,7 +15,7 @@ class WasmICARE {
      */
     constructor() {
         // Wasm-iCARE version.
-        this.version = '1.0.0';
+        this.version = '1.1.0';
         // Version of the iCARE Python package to load from PyPI.
         this.pyICareVersion = '1.0.0';
         // Version of Pyodide to load from the CDN.

@@ -15,11 +15,13 @@ class WasmICARE {
      */
     constructor() {
         // Wasm-iCARE version.
-        this.version = '1.0.0';
+        this.version = '1.1.0';
         // Version of the iCARE Python package to load from PyPI.
         this.pyICareVersion = '1.0.0';
         // Version of Pyodide to load from the CDN.
         this.pyodideVersion = '0.23.2';
+        // Files that are pre-loaded to the Pyodide file system.
+        this.preloadedFiles = [];
     }
 
     /**
@@ -80,6 +82,24 @@ class WasmICARE {
         }
 
         return await Promise.all(fileURLs.map(fetchAndWriteFile));
+    }
+
+    /**
+     * Method to load files from a list of URLs and write them to the Pyodide file system. This utility allows you to
+     * save time from network latencies when making several calls to computing absolute risk. When files are loaded
+     * using this option, they will not be re-loaded when computing absolute risk.
+     * @param fileURLs
+     * @returns {Promise<Awaited<*>[]>}
+     */
+    async preloadFiles(fileURLs) {
+        if (!this.pyodide) {
+            throw new Error('Please instantiate this class using the WasmICARE.initialize() method.');
+        }
+
+        const fileLoadAndWritePromises = await this.fetchFilesAndWriteToPyodideFS(fileURLs);
+        this.preloadedFiles = fileURLs;
+
+        return fileLoadAndWritePromises;
     }
 
     /**
@@ -227,7 +247,7 @@ class WasmICARE {
             modelSnpInfoUrl,
             applyCovariateProfileUrl,
             applySnpProfileUrl,
-        ].filter(url => url !== undefined);
+        ].filter(url => url !== undefined).filter(url => !this.preloadedFiles.includes(url));
 
         await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
@@ -446,7 +466,7 @@ result
             applyCovariateProfileBeforeCutpointUrl,
             applyCovariateProfileAfterCutpointUrl,
             applySnpProfileUrl,
-        ].filter(url => url !== undefined);
+        ].filter(url => url !== undefined).filter(url => !this.preloadedFiles.includes(url));
 
         await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
@@ -707,7 +727,7 @@ result
                 icareModelParameters.modelSnpInfoUrl,
                 icareModelParameters.applyCovariateProfileUrl,
                 icareModelParameters.applySnpProfileUrl,
-            ].filter(url => url !== undefined);
+            ].filter(url => url !== undefined).filter(url => !this.preloadedFiles.includes(url));
 
             await this.fetchFilesAndWriteToPyodideFS(fileURLs);
 
