@@ -1,6 +1,6 @@
 # Wasm-iCARE
 
-<p style="text-align:center;">
+<p align="center">
 <img src="./images/wasm-icare-logo.png" style="width: 40%;">
 </p>
 
