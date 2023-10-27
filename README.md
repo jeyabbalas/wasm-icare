@@ -30,8 +30,11 @@ Wasm-iCARE is a library with three main methods:
 
 The ObservableHQ notebooks for all the use-cases described above is listed at: https://observablehq.com/collection/@jeyabbalas/wasm-icare.
 
+## Demonstration
+iCARE-Lit is an example of a literature-based absolute risk model of breast cancer. A repository demonstrating the use of Wasm-iCARE to develop and deploy iCARE-Lit as a web application is shown here: https://github.com/jeyabbalas/icare-lit.
+
 ## License
 Wasm-iCARE is open-source licensed under the MIT License.
 
 ## References
-1. [Pal Choudhury, Parichoy, Paige Maas, Amber Wilcox, William Wheeler, Mark Brook, David Check, Montserrat Garcia-Closas, and Nilanjan Chatterjee. "iCARE: an R package to build, validate and apply absolute risk models." PloS one 15, no. 2 (2020): e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
+1. [Balasubramanian, Jeya Balaji, et al. "Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models." arXiv preprint arXiv:2310.09252 (2023).](https://arxiv.org/abs/2310.09252)
