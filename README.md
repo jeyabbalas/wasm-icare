@@ -37,4 +37,4 @@ iCARE-Lit is an example of a literature-based absolute risk model of breast canc
 Wasm-iCARE is open-source licensed under the MIT License.
 
 ## References
-1. [Balasubramanian, Jeya Balaji, et al. "Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models." arXiv preprint arXiv:2310.09252 (2023).](https://arxiv.org/abs/2310.09252)
+1. [Balasubramanian JB, Choudhury PP, Mukhopadhyay S, Ahearn T, Chatterjee N, García-Closas M, Almeida JS. Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models. JAMIA open. 2024 Apr 8;7(2).](https://pubmed.ncbi.nlm.nih.gov/38938691/)
