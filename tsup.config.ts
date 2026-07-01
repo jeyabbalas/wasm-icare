@@ -1,8 +1,8 @@
 import { defineConfig } from 'tsup';
 
 // ESM-only: Pyodide 314.x ships as native ES modules.
-// Env-conditional entries are wired to real bootstraps in later phases;
-// in Phase 0 the .node/.browser entries simply re-export the shared surface.
+// The three entries share one config; Node-only imports (`pyodide`, `node:*`)
+// live behind `index.node.ts`, so the neutral/browser bundles stay clean.
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
@@ -17,4 +17,13 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
+  esbuildOptions(options) {
+    // Inline `import source from '../bridge/bridge.py'` as the file's text, so
+    // the resident Python bridge ships embedded in the bundle (no runtime IO).
+    options.loader = { ...options.loader, '.py': 'text' };
+  },
+  // Note: with `platform: 'neutral'` esbuild rewrites the Node built-in imports
+  // in index.node.js from `node:fs` → `fs`, etc. That is safe — Node's ESM
+  // loader resolves the bare builtin names to core modules and they cannot be
+  // shadowed by `node_modules`. These imports live only in index.node.js.
 });

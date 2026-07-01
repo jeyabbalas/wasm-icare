@@ -12,6 +12,9 @@ export {
   PYICARE_VERSION,
   PYICARE_WHEEL_FILENAME,
   PYICARE_WHEEL_PATH,
+  PYODIDE_DEFAULT_PACKAGES,
+  PYODIDE_CDN_BASE_URL,
+  ICARE_BRIDGE_MODULE,
 } from './runtime/config';
 
 import type { ICARE, LoadICAREOptions } from './api/types';
