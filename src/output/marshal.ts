@@ -16,16 +16,18 @@
 
 import type { PyProxy } from 'pyodide/ffi';
 
+import type { CategoricalColumn } from '../api/types';
 import { extractArray, type NumericColumn } from './buffers';
 
 // Must match the marker keys emitted by `bridge.py` `columnarize`.
 const ARRAY_MARK = '__icare_array__';
 const FRAME_MARK = '__icare_frame__';
 const STRINGS_MARK = '__icare_strings__';
+const CATEGORICAL_MARK = '__icare_categorical__';
 
 /** A marshalled DataFrame: named columns + original column order + row count. */
 export interface ColumnarFrame {
-  columns: Record<string, NumericColumn | (string | null)[]>;
+  columns: Record<string, NumericColumn | (string | null)[] | CategoricalColumn>;
   order: string[];
   nRows: number;
 }
@@ -55,8 +57,11 @@ export function marshalColumnarResult(columnar: PyProxy): unknown {
   }
 }
 
-/** Recursively replace array/frame/strings marker nodes with plain JS values. */
-function spliceArrays(node: unknown, buffers: PyProxy[]): unknown {
+/**
+ * Recursively replace array/frame/strings/categorical marker nodes with plain JS
+ * values. Exported (`@internal`) so unit tests can drive it with a fake buffer.
+ */
+export function spliceArrays(node: unknown, buffers: PyProxy[]): unknown {
   if (Array.isArray(node)) {
     return node.map((child) => spliceArrays(child, buffers));
   }
@@ -67,6 +72,15 @@ function spliceArrays(node: unknown, buffers: PyProxy[]): unknown {
     }
     if (obj[STRINGS_MARK] === true) {
       return obj.data;
+    }
+    if (obj[CATEGORICAL_MARK] === true) {
+      // Codes arrive as an ARRAY_MARK node (int8/16/32 → `number[]`); normalize to
+      // a compact Int32Array, preserving `-1` (missing). `categories` are inline.
+      const codes = spliceArrays(obj.codes, buffers) as NumericColumn;
+      return {
+        codes: Int32Array.from(codes as ArrayLike<number>),
+        categories: obj.categories as string[],
+      } satisfies CategoricalColumn;
     }
     if (obj[FRAME_MARK] === true) {
       const columnsNode = obj.columns as Record<string, unknown>;

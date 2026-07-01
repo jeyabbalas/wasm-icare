@@ -135,13 +135,22 @@ export interface ValidateAbsoluteRiskModelOptions {
 
 // --- Results (tightened in Phase 3 for compute; validation stays loose) ------
 
+/** A marshalled pandas Categorical column: integer codes + ordered category labels. */
+export interface CategoricalColumn {
+  /** Per-row index into `categories`; `-1` marks a missing value. */
+  codes: Int32Array;
+  /** Ordered category labels (e.g. Interval strings like `"(-0.12, 0.34]"`). */
+  categories: string[];
+}
+
 /**
  * A marshalled DataFrame: named columns (numeric columns as typed arrays; string
- * columns as `string[]`), the original column order, and the row count. Numeric
- * columns are `Float64Array` for float data and `number[]` for integer data.
+ * columns as `string[]`; a pandas Categorical as a {@link CategoricalColumn}), the
+ * original column order, and the row count. Numeric columns are `Float64Array` for
+ * float data and `number[]` for integer data.
  */
 export interface ColumnarTableResult {
-  columns: Record<string, Float64Array | number[] | string[]>;
+  columns: Record<string, Float64Array | number[] | string[] | CategoricalColumn>;
   order: string[];
   nRows: number;
 }

@@ -30,6 +30,7 @@ _DISPATCH = {
 _ARRAY_MARK = "__icare_array__"
 _FRAME_MARK = "__icare_frame__"
 _STRINGS_MARK = "__icare_strings__"
+_CATEGORICAL_MARK = "__icare_categorical__"
 
 
 def pyicare_version():
@@ -208,6 +209,17 @@ def _columnarize(obj, buffers):
 
 
 def _columnarize_series(series, buffers):
+    # A pandas Categorical (e.g. validation's ``linear_predictors_category``) is
+    # marshalled as integer codes + ordered category labels, so JS keeps the
+    # ordering and a compact Int32Array instead of a giant repeated string array.
+    # ``-1`` codes mark missing values (JS must NOT index ``categories`` with them).
+    # pandas 3.0: ``is_categorical_dtype`` is removed — test the dtype directly.
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        return {
+            _CATEGORICAL_MARK: True,
+            "codes": _wrap_array(series.cat.codes.to_numpy(), buffers),
+            "categories": [str(c) for c in series.cat.categories],
+        }
     numeric = pd.api.types.is_numeric_dtype(series)
     if numeric and not pd.api.types.is_bool_dtype(series):
         return _wrap_array(series.to_numpy(), buffers)
