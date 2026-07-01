@@ -13,3 +13,8 @@ export function fixturePath(relative: string): string {
 export function bpc3(name: string): string {
   return fixturePath(`bpc3/${name}`);
 }
+
+/** Absolute path to an iCARE-Lit fixture file. */
+export function icareLit(name: string): string {
+  return fixturePath(`icare-lit/${name}`);
+}

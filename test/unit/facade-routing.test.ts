@@ -75,4 +75,30 @@ describe('facade input routing — kwargs vs frames', () => {
     expect(call.frames).toBeNull();
     expect(call.kwargs.model_reference_dataset_path).toBe('resolved:modelReferenceDataset');
   });
+
+  test('splitInterval routes a before-cutpoint columnar reference to frames[py_name]', async () => {
+    const { engine, calls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+
+    await icare.computeAbsoluteRiskSplitInterval({
+      applyAgeStart: 30,
+      applyAgeIntervalLength: 40,
+      cutpoint: 50,
+      modelDiseaseIncidenceRates: { path: 'inc.csv' },
+      modelCovariateFormulaBeforeCutpoint: 'y ~ x',
+      modelReferenceDatasetBeforeCutpoint: { columns: { c: [1] } },
+    });
+
+    const call = calls[0]!;
+    expect(call.op).toBe('splitInterval');
+    expect(call.kwargs.cutpoint).toBe(50);
+    expect(call.kwargs.model_covariate_formula_before_cutpoint_path).toBe(
+      'resolved:modelCovariateFormulaBeforeCutpoint',
+    );
+    // The before-cutpoint columnar table is a frame keyed by py-name, NOT a kwarg.
+    expect(call.kwargs).not.toHaveProperty('model_reference_dataset_before_cutpoint_path');
+    expect(call.frames).toEqual({
+      model_reference_dataset_before_cutpoint_path: { columns: { c: [1] }, dtypes: { c: 'i8' } },
+    });
+  });
 });

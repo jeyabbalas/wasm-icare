@@ -18,6 +18,7 @@ import type {
   ComputeAbsoluteRiskSplitIntervalOptions,
   ICARE,
   ReferenceRiskInterval,
+  SplitIntervalResult,
   ValidateAbsoluteRiskModelOptions,
   ValidationResult,
 } from './types';
@@ -65,11 +66,10 @@ export function createICARE(engine: Engine, materialize: InputMaterializer): ICA
     },
 
     async computeAbsoluteRiskSplitInterval(
-      _options: ComputeAbsoluteRiskSplitIntervalOptions,
-    ): Promise<AbsoluteRiskResult> {
-      throw new ICAREError(
-        'computeAbsoluteRiskSplitInterval is not implemented yet (lands in Phase 5).',
-      );
+      options: ComputeAbsoluteRiskSplitIntervalOptions,
+    ): Promise<SplitIntervalResult> {
+      const { kwargs, frames } = await resolveInputs('splitInterval', options, materialize);
+      return shapeSplitIntervalResult(engine.run('splitInterval', kwargs, frames));
     },
 
     async validateAbsoluteRiskModel(
@@ -124,34 +124,92 @@ async function resolveInputs(
   };
 }
 
+/** One `reference_risks` interval as the bridge marshals it (snake_case). */
+interface RawReferenceRiskInterval {
+  age_interval_start: number;
+  age_interval_end: number;
+  population_risks: Float64Array;
+}
+
+/** Map a marshalled `reference_risks` array onto camelCase intervals. */
+function toReferenceRiskIntervals(raw: RawReferenceRiskInterval[]): ReferenceRiskInterval[] {
+  return raw.map((interval) => ({
+    ageIntervalStart: interval.age_interval_start,
+    ageIntervalEnd: interval.age_interval_end,
+    populationRisks: interval.population_risks,
+  }));
+}
+
+/** A non-null, non-array object (discriminates nested vs flat result/param shapes). */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /** The generic marshalled `compute` result, before camelCase shaping. */
 interface RawAbsoluteRiskResult {
   model: Record<string, number>;
   profile: ColumnarTableResult;
-  reference_risks?: Array<{
-    age_interval_start: number;
-    age_interval_end: number;
-    population_risks: Float64Array;
-  }>;
+  reference_risks?: RawReferenceRiskInterval[];
   method: string;
 }
 
 /** Map the generic marshalled tree onto the public camelCase result type. */
 function shapeAbsoluteRiskResult(raw: unknown): AbsoluteRiskResult {
   const result = raw as RawAbsoluteRiskResult;
-  const result_: AbsoluteRiskResult = {
+  const shaped: AbsoluteRiskResult = {
     model: result.model,
     profile: result.profile,
     method: result.method,
   };
   if (result.reference_risks) {
-    result_.referenceRisks = result.reference_risks.map(
-      (interval): ReferenceRiskInterval => ({
-        ageIntervalStart: interval.age_interval_start,
-        ageIntervalEnd: interval.age_interval_end,
-        populationRisks: interval.population_risks,
-      }),
-    );
+    shaped.referenceRisks = toReferenceRiskIntervals(result.reference_risks);
   }
-  return result_;
+  return shaped;
+}
+
+/** The generic marshalled split-interval result, before camelCase shaping. */
+interface RawSplitIntervalResult {
+  model: Record<string, unknown>;
+  profile: ColumnarTableResult;
+  reference_risks?:
+    | RawReferenceRiskInterval[]
+    | {
+        before_cutpoint: RawReferenceRiskInterval[];
+        after_cutpoint: RawReferenceRiskInterval[];
+      };
+  method: string;
+}
+
+/**
+ * Shape a split-interval result. `combine_split_absolute_risk_results` nests
+ * `model` and `reference_risks` by side (`before_cutpoint` / `after_cutpoint`); a
+ * call with no cutpoint params *degrades* to a flat `compute` shape, which we
+ * detect (flat `model` betas are numbers, not objects; `reference_risks` an array)
+ * and pass through unchanged.
+ */
+function shapeSplitIntervalResult(raw: unknown): SplitIntervalResult {
+  const result = raw as RawSplitIntervalResult;
+  const model = result.model;
+  const nestedModel =
+    isPlainObject(model.before_cutpoint) && isPlainObject(model.after_cutpoint);
+  const shaped: SplitIntervalResult = {
+    model: nestedModel
+      ? {
+          beforeCutpoint: model.before_cutpoint as Record<string, number>,
+          afterCutpoint: model.after_cutpoint as Record<string, number>,
+        }
+      : (model as Record<string, number>),
+    profile: result.profile,
+    method: result.method,
+  };
+  const refRisks = result.reference_risks;
+  if (refRisks !== undefined) {
+    shaped.referenceRisks = Array.isArray(refRisks)
+      ? toReferenceRiskIntervals(refRisks)
+      : {
+          beforeCutpoint: toReferenceRiskIntervals(refRisks.before_cutpoint),
+          afterCutpoint: toReferenceRiskIntervals(refRisks.after_cutpoint),
+        };
+  }
+  return shaped;
 }

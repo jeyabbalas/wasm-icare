@@ -172,6 +172,35 @@ export interface AbsoluteRiskResult {
   method: string;
 }
 
+/** Per-side fitted betas when a split interval uses distinct pre/post-cutpoint models. */
+export interface SplitModel {
+  beforeCutpoint: Record<string, number>;
+  afterCutpoint: Record<string, number>;
+}
+
+/** Per-side reference-population risks for a split interval. */
+export interface SplitReferenceRisks {
+  beforeCutpoint: ReferenceRiskInterval[];
+  afterCutpoint: ReferenceRiskInterval[];
+}
+
+export interface SplitIntervalResult {
+  /**
+   * Nested per-side betas when a cutpoint splits the interval; a flat
+   * `{ feature: beta }` map on the degrade path (no cutpoint / after-* params).
+   */
+  model: SplitModel | Record<string, number>;
+  /**
+   * Per-subject combined results: `id`, `age_interval_start`, `cutpoint`,
+   * `age_interval_end`, `age_interval_length`, `risk_estimates`, the two
+   * `linear_predictors_*_cutpoint` columns (if requested), then covariates.
+   */
+  profile: ColumnarTableResult;
+  /** Nested per-side reference risks when split; a flat array on the degrade path. */
+  referenceRisks?: SplitReferenceRisks | ReferenceRiskInterval[];
+  method: string;
+}
+
 export interface ValidationResult {
   method: string;
   [key: string]: unknown;
@@ -200,7 +229,7 @@ export interface ICARE {
   computeAbsoluteRisk(options: ComputeAbsoluteRiskOptions): Promise<AbsoluteRiskResult>;
   computeAbsoluteRiskSplitInterval(
     options: ComputeAbsoluteRiskSplitIntervalOptions,
-  ): Promise<AbsoluteRiskResult>;
+  ): Promise<SplitIntervalResult>;
   validateAbsoluteRiskModel(
     options: ValidateAbsoluteRiskModelOptions,
   ): Promise<ValidationResult>;
