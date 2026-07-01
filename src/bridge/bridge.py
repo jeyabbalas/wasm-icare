@@ -88,6 +88,32 @@ def build_df(columns, dtypes=None):
     return pd.DataFrame(data)
 
 
+def build_df_from_arrow(ipc):
+    """Rebuild a DataFrame from Arrow IPC stream bytes via pyarrow.
+
+    ``ipc`` arrives from JS (``apache-arrow`` ``tableToIPC``) as a buffer. pyarrow
+    must be loaded (``loadICARE({packages:['pyarrow']})``). Text columns are cast
+    to pandas 3.0's ``str`` dtype so an Arrow ``Dictionary``/``Utf8`` column
+    (which ``to_pandas`` maps to ``category``/``object``) reproduces ``read_csv``
+    — load-bearing for the reference->profile dtype coupling.
+    """
+    try:
+        import pyarrow as pa
+    except ImportError as exc:
+        raise ImportError(
+            "Arrow inputs require pyarrow; load it via "
+            "loadICARE({ packages: ['pyarrow'] })."
+        ) from exc
+
+    table = pa.ipc.open_stream(pa.py_buffer(ipc)).read_all()
+    df = table.to_pandas()
+    for col in df.columns:
+        series = df[col]
+        if not pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
+            df[col] = series.astype("str")
+    return df
+
+
 def describe_dataframe(columns):
     """Probe: build a DataFrame from ``columns`` and return a JSON-safe summary.
 
@@ -114,9 +140,10 @@ def run(op, kwargs, frames=None):
       ``undefined``-pruned by params.ts ``toPythonKwargs``); omitted keys let
       py-icare apply its own defaults.
     - ``frames``: optional ``{py_param_name: frame}`` for the object-sink input
-      path, where ``frame`` is ``{'columns': ..., 'dtypes': ...}`` (built by
-      ``build_df``). Merged into ``kw`` under ``py_param_name`` so it overrides
-      any same-named path kwarg.
+      path. ``frame`` is either ``{'columns': ..., 'dtypes': ...}`` (built by
+      ``build_df``) or ``{'arrow_ipc': <bytes>}`` (built by
+      ``build_df_from_arrow``). Merged into ``kw`` under ``py_param_name`` so it
+      overrides any same-named path kwarg.
     """
     try:
         fn_name = _DISPATCH[op]
@@ -127,7 +154,10 @@ def run(op, kwargs, frames=None):
     if frames is not None:
         for name, frame in dict(frames).items():
             frame = dict(frame)
-            kw[str(name)] = build_df(frame["columns"], frame.get("dtypes"))
+            if "arrow_ipc" in frame:
+                kw[str(name)] = build_df_from_arrow(frame["arrow_ipc"])
+            else:
+                kw[str(name)] = build_df(frame["columns"], frame.get("dtypes"))
     kw["output_format"] = "dataframe"
 
     return getattr(icare, fn_name)(**kw)

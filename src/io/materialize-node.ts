@@ -7,8 +7,8 @@
  * fetch), and `Blob`/`File` are read into raw bytes and written into the Pyodide
  * FS; py-icare then reads them with the unchanged `read_csv`/`read_*` path.
  * Inline forms — a Patsy formula `string`, a log-OR object — pass straight
- * through. Columnar / row-array tables become an object-sink `frame` (a pandas
- * DataFrame built in the bridge). Arrow tables land in Phase 4c.
+ * through. Columnar / row-array tables and `apache-arrow` tables become an
+ * object-sink `frame` (a pandas DataFrame built in the bridge).
  */
 
 import { readFile } from 'node:fs/promises';
@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import type { InputMaterializer, MaterializedInput } from '../api/icareFacade';
 import type { Engine } from '../runtime/engine';
 import { ICAREError } from '../util/errors';
+import { isArrowTable, toArrowFramePayload } from './arrow';
 import { basename } from './bytes';
 import { columnarizeRows, toFramePayload } from './columnar';
 import { isBlobInput, isColumnarInput, isPathInput, isRowTable, isUrlInput } from './guards';
@@ -42,6 +43,9 @@ export function createNodeMaterializer(engine: Engine): InputMaterializer {
     if (typeof input === 'string') {
       // Inline Patsy formula (or an already-resolved FS path string).
       return { via: 'kwarg', value: input };
+    }
+    if (isArrowTable(input)) {
+      return { via: 'frame', frame: await toArrowFramePayload(input) };
     }
     if (isColumnarInput(input)) {
       return { via: 'frame', frame: toFramePayload(input.columns) };

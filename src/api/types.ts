@@ -27,11 +27,22 @@ export interface ColumnarTable {
 export type RowTable = Array<Record<string, unknown>>;
 
 /**
- * A tabular dataset argument. Accepts every supported form; the input
- * normalizer (Phase 4) resolves each to a Pyodide FS file or a Python object.
- * `File` is structurally a `Blob`, so it is covered by the `Blob` member.
+ * An `apache-arrow` `Table` (minimal structural view — no static dependency on
+ * the optional `apache-arrow` package). Crosses to Python as Arrow IPC bytes and
+ * is rebuilt with `pyarrow`, which must be loaded via
+ * `loadICARE({ packages: ['pyarrow'] })`.
  */
-export type TabularInput = UrlInput | PathInput | ColumnarTable | RowTable | Blob;
+export interface ArrowTable {
+  schema: unknown;
+  numRows: number;
+}
+
+/**
+ * A tabular dataset argument. Accepts every supported form; the input
+ * normalizer resolves each to a Pyodide FS file or a Python object. `File` is
+ * structurally a `Blob`, so it is covered by the `Blob` member.
+ */
+export type TabularInput = UrlInput | PathInput | ColumnarTable | RowTable | Blob | ArrowTable;
 
 /** A Patsy covariate formula: inline text, or a file source. */
 export type FormulaInput = string | UrlInput | PathInput | Blob;
