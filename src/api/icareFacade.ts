@@ -7,6 +7,7 @@
  * (via `{ path }` inputs); split-interval and validation land in Phase 5.
  */
 
+import type { FramePayload } from '../io/columnar';
 import type { Engine } from '../runtime/engine';
 import { ICAREError } from '../util/errors';
 import { paramSpecs, toPythonKwargs, type Operation, type ParamKind } from './params';
@@ -21,16 +22,29 @@ import type {
   ValidationResult,
 } from './types';
 
+/** An object-sink frame: a dtype-tagged columnar table or Arrow IPC bytes. */
+export type FrameInput = FramePayload | { arrow_ipc: Uint8Array };
+
 /**
- * Resolves a data-bearing option value into what py-icare expects — an FS path
- * (byte/FS sink) or an inline value. Env-specific (Node reads host files; the
- * browser fetches/reads Blobs, Phase 4). Returns the resolved value.
+ * What a materializer resolves a data-bearing option to — either a scalar
+ * `kwarg` value merged into the py-icare kwargs (an FS path from the byte/FS
+ * sink, or an inline formula/log-OR), or a `frame` passed via the object-sink
+ * channel (keyed by the py-icare parameter name).
+ */
+export type MaterializedInput =
+  | { via: 'kwarg'; value: unknown }
+  | { via: 'frame'; frame: FrameInput };
+
+/**
+ * Resolves a data-bearing option value into what py-icare expects. Env-specific
+ * (Node reads host files / URLs / Blobs; the browser materializer lands in
+ * Phase 7).
  */
 export type InputMaterializer = (
   input: unknown,
   kind: ParamKind,
   jsName: string,
-) => Promise<unknown>;
+) => Promise<MaterializedInput>;
 
 /** Kinds whose value is a data source that must be resolved before dispatch. */
 const DATA_KINDS: ReadonlySet<ParamKind> = new Set<ParamKind>([
@@ -46,9 +60,8 @@ export function createICARE(engine: Engine, materialize: InputMaterializer): ICA
     async computeAbsoluteRisk(
       options: ComputeAbsoluteRiskOptions,
     ): Promise<AbsoluteRiskResult> {
-      const resolved = await resolveInputs('compute', options, materialize);
-      const kwargs = toPythonKwargs('compute', resolved);
-      return shapeAbsoluteRiskResult(engine.run('compute', kwargs));
+      const { kwargs, frames } = await resolveInputs('compute', options, materialize);
+      return shapeAbsoluteRiskResult(engine.run('compute', kwargs, frames));
     },
 
     async computeAbsoluteRiskSplitInterval(
@@ -73,24 +86,42 @@ export function createICARE(engine: Engine, materialize: InputMaterializer): ICA
   };
 }
 
+/** A resolved operation call: snake_case kwargs plus an optional object-sink map. */
+interface ResolvedCall {
+  kwargs: Record<string, unknown>;
+  frames: Record<string, FrameInput> | null;
+}
+
 /**
- * Resolve every data-bearing option to an FS path / inline value, leaving scalar
- * params untouched. Returns a fresh options object suitable for `toPythonKwargs`.
+ * Resolve every data-bearing option to a kwarg (FS path / inline value) or an
+ * object-sink `frame`, leaving scalar params untouched. `frame` inputs are
+ * routed to `frames` keyed by the py-icare parameter name and dropped from the
+ * kwargs (so a given input goes to EITHER kwargs OR frames, never both).
  */
 async function resolveInputs(
   op: Operation,
   options: object,
   materialize: InputMaterializer,
-): Promise<Record<string, unknown>> {
+): Promise<ResolvedCall> {
   const source = options as Record<string, unknown>;
   const resolved: Record<string, unknown> = { ...source };
+  const frames: Record<string, FrameInput> = {};
   for (const spec of paramSpecs(op)) {
     if (!DATA_KINDS.has(spec.kind)) continue;
     const value = source[spec.js];
     if (value === undefined) continue;
-    resolved[spec.js] = await materialize(value, spec.kind, spec.js);
+    const materialized = await materialize(value, spec.kind, spec.js);
+    if (materialized.via === 'frame') {
+      frames[spec.py] = materialized.frame;
+      delete resolved[spec.js];
+    } else {
+      resolved[spec.js] = materialized.value;
+    }
   }
-  return resolved;
+  return {
+    kwargs: toPythonKwargs(op, resolved),
+    frames: Object.keys(frames).length > 0 ? frames : null,
+  };
 }
 
 /** The generic marshalled `compute` result, before camelCase shaping. */

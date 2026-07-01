@@ -52,15 +52,39 @@ def runtime_versions():
     }
 
 
-def build_df(columns):
+def build_df(columns, dtypes=None):
     """Build a DataFrame from a columnar mapping ``{name: sequence}``.
 
-    ``columns`` arrives from JS via ``toPy`` as a Python dict of lists (numeric
-    TypedArrays convert to buffers/lists; string[] to lists). Phase 4 wires the
-    real object-sink input path through here; authored now so the round-trip is
-    testable.
+    ``columns`` arrives from JS via ``toPy`` as a Python dict (numeric TypedArrays
+    convert to buffers, ``string[]``/``number[]`` to lists). ``dtypes`` is an
+    optional ``{name: 'f8'|'i8'|'bool'|'str'}`` map produced by ``columnar.ts``;
+    when present, each column is built with that explicit dtype so the frame
+    reproduces ``read_csv`` inference (``None`` -> ``NaN`` for numeric, ``None``
+    preserved for object). Without ``dtypes`` the columns fall back to pandas'
+    own inference (used by the ``describe_dataframe`` round-trip probe).
     """
-    data = {str(name): list(values) for name, values in dict(columns).items()}
+    tags = dict(dtypes) if dtypes is not None else {}
+    data = {}
+    for name, values in dict(columns).items():
+        name = str(name)
+        tag = tags.get(name)
+        if tag == "f8":
+            data[name] = pd.Series(np.asarray(values, dtype="float64"))
+        elif tag == "i8":
+            data[name] = pd.Series(np.asarray(values, dtype="int64"))
+        elif tag == "bool":
+            data[name] = pd.Series(list(values), dtype="bool")
+        elif tag == "str":
+            # pandas 3.0's read_csv infers text columns as the ``str`` dtype
+            # (not object). Matching it is load-bearing: the reference dataset's
+            # dtypes drive the covariate-profile coupling, and ``astype('str')``
+            # stringifies an integer-looking profile column ('0') whereas
+            # ``astype(object)`` would leave it an int (breaking patsy levels).
+            data[name] = pd.Series(
+                [None if v is None else str(v) for v in values], dtype="str"
+            )
+        else:
+            data[name] = list(values)
     return pd.DataFrame(data)
 
 
@@ -89,8 +113,10 @@ def run(op, kwargs, frames=None):
     - ``kwargs``: snake_case keyword args (already name-mapped and
       ``undefined``-pruned by params.ts ``toPythonKwargs``); omitted keys let
       py-icare apply its own defaults.
-    - ``frames``: optional ``{py_param_name: columnar-mapping}`` for the
-      object-sink input path (Phase 4); each is materialized via ``build_df``.
+    - ``frames``: optional ``{py_param_name: frame}`` for the object-sink input
+      path, where ``frame`` is ``{'columns': ..., 'dtypes': ...}`` (built by
+      ``build_df``). Merged into ``kw`` under ``py_param_name`` so it overrides
+      any same-named path kwarg.
     """
     try:
         fn_name = _DISPATCH[op]
@@ -99,8 +125,9 @@ def run(op, kwargs, frames=None):
 
     kw = dict(kwargs) if kwargs is not None else {}
     if frames is not None:
-        for name, columns in dict(frames).items():
-            kw[str(name)] = build_df(columns)
+        for name, frame in dict(frames).items():
+            frame = dict(frame)
+            kw[str(name)] = build_df(frame["columns"], frame.get("dtypes"))
     kw["output_format"] = "dataframe"
 
     return getattr(icare, fn_name)(**kw)
