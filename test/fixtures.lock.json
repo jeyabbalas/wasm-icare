@@ -1,0 +1,312 @@
+{
+  "description": "sha256 lockfile for vendored py-icare test fixtures/goldens. Regenerate with `npm run sync-fixtures`; verify with `npm run verify-fixtures`.",
+  "pyicareRef": "f8c6bf2a9411345f850b5edaa2703aab27daf50b",
+  "fileCount": 38,
+  "totalBytes": 6464270,
+  "files": [
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/age_specific_all_cause_mortality_rates.csv",
+      "dest": "test/fixtures/bpc3/age_specific_all_cause_mortality_rates.csv",
+      "slow": false,
+      "bytes": 1083,
+      "sha256": "55147654056c82d40bbefc54fa198632c1bebf49e8a0109a6da638f9e7bf3f1e"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/age_specific_breast_cancer_incidence_rates.csv",
+      "dest": "test/fixtures/bpc3/age_specific_breast_cancer_incidence_rates.csv",
+      "slow": false,
+      "bytes": 1081,
+      "sha256": "3f0aecebe3fbfeec78cc34419a685039e33c70080371571ba98d8c9651784067"
+    },
+    {
+      "group": "bpc3",
+      "src": "tests/r_reference/fixtures/bpc3_nested_cc_glm_weights.csv",
+      "dest": "test/fixtures/bpc3/bpc3_nested_cc_glm_weights.csv",
+      "slow": true,
+      "bytes": 127384,
+      "sha256": "f48887a918afbd38f88c60f3c04f22e4a8ad0ee10d053f72c7071d0c3feebc60"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/breast_cancer_72_snps_info.csv",
+      "dest": "test/fixtures/bpc3/breast_cancer_72_snps_info.csv",
+      "slow": false,
+      "bytes": 1550,
+      "sha256": "c22fa8e2d93a508b7018e1965dd54ef63aee9edd395f8e77928f935eab1be17b"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/breast_cancer_covariate_model_formula.txt",
+      "dest": "test/fixtures/bpc3/breast_cancer_covariate_model_formula.txt",
+      "slow": false,
+      "bytes": 1106,
+      "sha256": "d63a2bed603e6b55df33adca0a2d74f947ae8dac4efac1dc2fb8874d08d093b6"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/breast_cancer_model_log_odds_ratios_post_50.json",
+      "dest": "test/fixtures/bpc3/breast_cancer_model_log_odds_ratios_post_50.json",
+      "slow": false,
+      "bytes": 11403,
+      "sha256": "c2f261af2821d489cbfb30b4b076084278508c0fdb987b1ac224081291e1e404"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/breast_cancer_model_log_odds_ratios.json",
+      "dest": "test/fixtures/bpc3/breast_cancer_model_log_odds_ratios.json",
+      "slow": false,
+      "bytes": 11398,
+      "sha256": "d8635f474f5b924106e1d91a429963179dd889e91096eaf5ef2c101e87e8436d"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/query_covariate_profile.csv",
+      "dest": "test/fixtures/bpc3/query_covariate_profile.csv",
+      "slow": false,
+      "bytes": 373,
+      "sha256": "e8ef7ef00e1019cefbdceb0cfb6881aa3b23c69738179b126220f46edb8beca4"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/query_snp_profile.csv",
+      "dest": "test/fixtures/bpc3/query_snp_profile.csv",
+      "slow": false,
+      "bytes": 1333,
+      "sha256": "213cdbddf11da5ce4b93cdbc859328019cfa2d6f30aae262dbfad60692e8ef77"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/reference_covariate_data_post_50.csv",
+      "dest": "test/fixtures/bpc3/reference_covariate_data_post_50.csv",
+      "slow": false,
+      "bytes": 958454,
+      "sha256": "390fd6b246b8b5a93314e8c84efe6126be546bd847ed2b5329eaa6412787f35a"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/reference_covariate_data.csv",
+      "dest": "test/fixtures/bpc3/reference_covariate_data.csv",
+      "slow": false,
+      "bytes": 958432,
+      "sha256": "e1db0edb48723c30bdda9c7d22f5b02443b3514262bdd40ab95fd8e0cee0ad6e"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/validation_nested_case_control_covariate_data.csv",
+      "dest": "test/fixtures/bpc3/validation_nested_case_control_covariate_data.csv",
+      "slow": true,
+      "bytes": 347231,
+      "sha256": "b6c7a697efe3f944b885a5413054b8fc442e230c08de85a31ddd515787ffb9b4"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/validation_nested_case_control_data.csv",
+      "dest": "test/fixtures/bpc3/validation_nested_case_control_data.csv",
+      "slow": true,
+      "bytes": 1250616,
+      "sha256": "cb02b44e13ef5a5382a72e03fd2ee5d250dcabf7e8ecce53ee4cc1ff710be515"
+    },
+    {
+      "group": "bpc3",
+      "src": "data/BPC3/validation_nested_case_control_snp_data.csv",
+      "dest": "test/fixtures/bpc3/validation_nested_case_control_snp_data.csv",
+      "slow": true,
+      "bytes": 792302,
+      "sha256": "22d9c7b5983dce2e82a99172640d253f7b96a5543dda80b974e2c759b14c06cf"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/age_specific_all_cause_mortality_rates.csv",
+      "dest": "test/fixtures/icare-lit/age_specific_all_cause_mortality_rates.csv",
+      "slow": false,
+      "bytes": 1192,
+      "sha256": "17b7cd4bd15a9bc8050fa389a8693e1e280baf8e2ee41febc0bd13d28ca2af0f"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/age_specific_breast_cancer_incidence_rates.csv",
+      "dest": "test/fixtures/icare-lit/age_specific_breast_cancer_incidence_rates.csv",
+      "slow": false,
+      "bytes": 1040,
+      "sha256": "4f3f39d9a2f37c3fcc1c2bb93e16ae54921d1cbd1755dc056ec23d3e4310ead4"
+    },
+    {
+      "group": "icare-lit",
+      "src": "tests/r_reference/fixtures/icare_lit_query_ge50.csv",
+      "dest": "test/fixtures/icare-lit/icare_lit_query_ge50.csv",
+      "slow": false,
+      "bytes": 3991,
+      "sha256": "3a418aa15824b912db4cdffb69bbfb2bb4c66fd302f7720f9196d8c55dd62e50"
+    },
+    {
+      "group": "icare-lit",
+      "src": "tests/r_reference/fixtures/icare_lit_query_lt50.csv",
+      "dest": "test/fixtures/icare-lit/icare_lit_query_lt50.csv",
+      "slow": false,
+      "bytes": 3233,
+      "sha256": "7e9a8cf8c5fc7bfbc164924bdf018caa60e5714ac2f78e359e44e737cd1f6ea8"
+    },
+    {
+      "group": "icare-lit",
+      "src": "tests/r_reference/fixtures/icare_lit_validation_covariates.csv",
+      "dest": "test/fixtures/icare-lit/icare_lit_validation_covariates.csv",
+      "slow": true,
+      "bytes": 377400,
+      "sha256": "d7709994e5cf1a1756a10c29658199989ac3846f3a570dde3c15fa3281607750"
+    },
+    {
+      "group": "icare-lit",
+      "src": "tests/r_reference/fixtures/icare_lit_validation_study.csv",
+      "dest": "test/fixtures/icare-lit/icare_lit_validation_study.csv",
+      "slow": true,
+      "bytes": 98582,
+      "sha256": "498338f64141ef3f84cb8599b8f8c5b6a7fa2db056b39e6f7d58b95beeda2ac9"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/model_formula_ge50.txt",
+      "dest": "test/fixtures/icare-lit/model_formula_ge50.txt",
+      "slow": false,
+      "bytes": 464,
+      "sha256": "8f9a4e350663472fa0802379d97d5a6af02cd226f2c2e5c255db1de22f6619cc"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/model_formula_lt50.txt",
+      "dest": "test/fixtures/icare-lit/model_formula_lt50.txt",
+      "slow": false,
+      "bytes": 382,
+      "sha256": "d716c546248d5244342c4168222824af48f31e489726da3e696d4a78b22ecea3"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/model_log_odds_ratios_ge50.json",
+      "dest": "test/fixtures/icare-lit/model_log_odds_ratios_ge50.json",
+      "slow": false,
+      "bytes": 3278,
+      "sha256": "3b119507b64870889fd7290ffb8af9240ad269c594b1d2c9c8a01a4828bd33f4"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/model_log_odds_ratios_lt50.json",
+      "dest": "test/fixtures/icare-lit/model_log_odds_ratios_lt50.json",
+      "slow": false,
+      "bytes": 2151,
+      "sha256": "47cdbf1cb2b9766a2879cc232db16b5cf9825194ee431687b556361ba5485cd5"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/reference_covariate_data_ge50.csv",
+      "dest": "test/fixtures/icare-lit/reference_covariate_data_ge50.csv",
+      "slow": false,
+      "bytes": 798013,
+      "sha256": "bfb59ef19b6c46f59cd10cd89cabafa2b68071c7a2a9f15e980cb137070d8d15"
+    },
+    {
+      "group": "icare-lit",
+      "src": "data/iCARE-Lit/reference_covariate_data_lt50.csv",
+      "dest": "test/fixtures/icare-lit/reference_covariate_data_lt50.csv",
+      "slow": false,
+      "bytes": 702873,
+      "sha256": "db0d3f1cad2b2f292a86f7c1fa047cfbb7f31c5843522e1d76d27676438f4ffd"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_combined.json",
+      "dest": "test/golden/bpc3_combined.json",
+      "slow": false,
+      "bytes": 368,
+      "sha256": "aaa4d2b59733d81ba0286f3d7bf213b125fc268519cce975f3b4ced25bfa2d05"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_covariate_only.json",
+      "dest": "test/golden/bpc3_covariate_only.json",
+      "slow": false,
+      "bytes": 431,
+      "sha256": "ac04fe32c468103887afab7d39770b2a8dd11ab12b01bc3cf4578757e7e534ec"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_snp_only_no_profile.json",
+      "dest": "test/golden/bpc3_snp_only_no_profile.json",
+      "slow": false,
+      "bytes": 529,
+      "sha256": "b2194d2dd009aec18f731609cecc2ae7a2412c64a399f624fb9a6a8322948197"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_snp_only_with_profile.json",
+      "dest": "test/golden/bpc3_snp_only_with_profile.json",
+      "slow": false,
+      "bytes": 365,
+      "sha256": "0979a26a18c209b8c4cd6bd14ab69b40418fe07401ea4e32fdee4db6706712c0"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_split_interval_combined.json",
+      "dest": "test/golden/bpc3_split_interval_combined.json",
+      "slow": false,
+      "bytes": 135,
+      "sha256": "882e0a601f04b9ebaf32253443d064cf8bc02049b5362fb92e605a4393825a5e"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_split_interval_covariate_only.json",
+      "dest": "test/golden/bpc3_split_interval_covariate_only.json",
+      "slow": false,
+      "bytes": 135,
+      "sha256": "83b69cbd3f7dc2990955d813ef6752364b1a2d361375d9217f10b3e3c03c7b23"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_validation_combined.json",
+      "dest": "test/golden/bpc3_validation_combined.json",
+      "slow": false,
+      "bytes": 314,
+      "sha256": "1c3476728438d5b4bf11f702b40bf81e8c8d3b5b604d50e75b5606357947128c"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/bpc3_validation_covariate_only.json",
+      "dest": "test/golden/bpc3_validation_covariate_only.json",
+      "slow": false,
+      "bytes": 305,
+      "sha256": "51a8447af4b47dfedf98f2e5e4f5404fd1df3f8d632ccfa94172804577a1438d"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/icare_lit_covariate_only_ge50.json",
+      "dest": "test/golden/icare_lit_covariate_only_ge50.json",
+      "slow": false,
+      "bytes": 2024,
+      "sha256": "1c93fb190659599749212fc0e1ed646e1e56e9cbbfa6f0e03f23fa99b8a1e6ba"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/icare_lit_covariate_only_lt50.json",
+      "dest": "test/golden/icare_lit_covariate_only_lt50.json",
+      "slow": false,
+      "bytes": 2033,
+      "sha256": "edaa417fdbb7a13ea60371391210fe429ad81c7a20ffa451a384a67b9f8eb76f"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/icare_lit_split_interval.json",
+      "dest": "test/golden/icare_lit_split_interval.json",
+      "slow": false,
+      "bytes": 977,
+      "sha256": "08939971afb6611b29b91484c4263b5c197b3f86a4b59500cbdc9393563701a5"
+    },
+    {
+      "group": "golden",
+      "src": "tests/r_reference/expected/icare_lit_validation.json",
+      "dest": "test/golden/icare_lit_validation.json",
+      "slow": false,
+      "bytes": 309,
+      "sha256": "a01b72e858dddaf2de0ff26ca3265cb9e4953886db3351f58f4bbb9411b36ae3"
+    }
+  ]
+}

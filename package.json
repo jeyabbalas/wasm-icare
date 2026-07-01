@@ -1,0 +1,63 @@
+{
+  "name": "wasm-icare",
+  "version": "2.0.0",
+  "description": "JavaScript/TypeScript SDK for py-icare (iCARE: individualized Coherent Absolute Risk Estimation), run in Pyodide/WebAssembly.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Jeya Balaji Balasubramanian",
+  "homepage": "https://github.com/jeyabbalas/wasm-icare",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeyabbalas/wasm-icare.git"
+  },
+  "keywords": [
+    "icare",
+    "absolute-risk",
+    "epidemiology",
+    "pyodide",
+    "webassembly",
+    "wasm"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.node.js",
+      "browser": "./dist/index.browser.js",
+      "worker": "./dist/index.browser.js",
+      "default": "./dist/index.js"
+    },
+    "./assets/*": "./assets/*",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "pyodide": "314.0.2"
+  },
+  "optionalDependencies": {
+    "apache-arrow": "^17"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsup": "^8",
+    "typescript": "^5.6",
+    "vitest": "^3"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:e2e": "vitest run --project e2e",
+    "test:e2e:slow": "RUN_SLOW=1 vitest run --project e2e-slow",
+    "sync-fixtures": "node scripts/sync-fixtures.mjs",
+    "verify-fixtures": "node scripts/sync-fixtures.mjs --verify",
+    "vendor-wheel": "node scripts/vendor-wheel.mjs"
+  }
+}
