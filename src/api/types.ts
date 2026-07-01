@@ -122,14 +122,34 @@ export interface ValidateAbsoluteRiskModelOptions {
   seed?: number;
 }
 
-// --- Results (loose in Phase 0; tightened in Phases 3/5) ---------------------
+// --- Results (tightened in Phase 3 for compute; validation stays loose) ------
+
+/**
+ * A marshalled DataFrame: named columns (numeric columns as typed arrays; string
+ * columns as `string[]`), the original column order, and the row count. Numeric
+ * columns are `Float64Array` for float data and `number[]` for integer data.
+ */
+export interface ColumnarTableResult {
+  columns: Record<string, Float64Array | number[] | string[]>;
+  order: string[];
+  nRows: number;
+}
+
+/** One reference-population risk interval (present when `returnReferenceRisks`). */
+export interface ReferenceRiskInterval {
+  ageIntervalStart: number;
+  ageIntervalEnd: number;
+  populationRisks: Float64Array;
+}
 
 export interface AbsoluteRiskResult {
-  model: unknown;
-  profile: unknown;
-  referenceRisks?: unknown;
+  /** Design-matrix column name → fitted log relative-risk (beta). */
+  model: Record<string, number>;
+  /** Per-subject results: `risk_estimates`, `linear_predictors` (if requested), etc. */
+  profile: ColumnarTableResult;
+  /** Reference-population risks per age interval (if `returnReferenceRisks`). */
+  referenceRisks?: ReferenceRiskInterval[];
   method: string;
-  [key: string]: unknown;
 }
 
 export interface ValidationResult {
