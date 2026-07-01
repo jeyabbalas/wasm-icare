@@ -16,6 +16,7 @@ import type {
   ColumnarTableResult,
   ComputeAbsoluteRiskOptions,
   ComputeAbsoluteRiskSplitIntervalOptions,
+  GoodnessOfFitTest,
   ICARE,
   ReferenceRiskInterval,
   SplitIntervalResult,
@@ -73,11 +74,10 @@ export function createICARE(engine: Engine, materialize: InputMaterializer): ICA
     },
 
     async validateAbsoluteRiskModel(
-      _options: ValidateAbsoluteRiskModelOptions,
+      options: ValidateAbsoluteRiskModelOptions,
     ): Promise<ValidationResult> {
-      throw new ICAREError(
-        'validateAbsoluteRiskModel is not implemented yet (lands in Phase 5).',
-      );
+      const { kwargs, frames } = await resolveInputs('validate', options, materialize);
+      return shapeValidationResult(engine.run('validate', kwargs, frames));
     },
 
     async close(): Promise<void> {
@@ -107,9 +107,17 @@ async function resolveInputs(
   const resolved: Record<string, unknown> = { ...source };
   const frames: Record<string, FrameInput> = {};
   for (const spec of paramSpecs(op)) {
-    if (!DATA_KINDS.has(spec.kind)) continue;
     const value = source[spec.js];
     if (value === undefined) continue;
+    if (spec.kind === 'nested') {
+      // `icareModelParameters`: materialize its inner data inputs in place, then
+      // let toPythonKwargs rename the (still camelCase) nested map exactly once.
+      if (isPlainObject(value)) {
+        resolved[spec.js] = await resolveNested(value, materialize);
+      }
+      continue;
+    }
+    if (!DATA_KINDS.has(spec.kind)) continue;
     const materialized = await materialize(value, spec.kind, spec.js);
     if (materialized.via === 'frame') {
       frames[spec.py] = materialized.frame;
@@ -122,6 +130,36 @@ async function resolveInputs(
     kwargs: toPythonKwargs(op, resolved),
     frames: Object.keys(frames).length > 0 ? frames : null,
   };
+}
+
+/**
+ * Resolve the `compute`-shaped data inputs nested inside `icareModelParameters`,
+ * keeping their camelCase keys (so the outer `toPythonKwargs` renames them once).
+ *
+ * The object-sink frame channel merges at the top level only, so an in-memory
+ * table (columnar / rows / Arrow) *inside* `icareModelParameters` is unsupported
+ * and throws; every nested input must be a `{ path }` / `{ url }` / `Blob` or an
+ * inline formula / log-OR. This covers both validation cross-validation suites.
+ */
+async function resolveNested(
+  nested: Record<string, unknown>,
+  materialize: InputMaterializer,
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = { ...nested };
+  for (const spec of paramSpecs('compute')) {
+    if (!DATA_KINDS.has(spec.kind)) continue;
+    const value = nested[spec.js];
+    if (value === undefined) continue;
+    const materialized = await materialize(value, spec.kind, spec.js);
+    if (materialized.via === 'frame') {
+      throw new ICAREError(
+        `'${spec.js}' inside icareModelParameters must be a { path } / { url } / Blob ` +
+          'or an inline formula / log-OR; in-memory tables there are not supported yet.',
+      );
+    }
+    out[spec.js] = materialized.value;
+  }
+  return out;
 }
 
 /** One `reference_risks` interval as the bridge marshals it (snake_case). */
@@ -210,6 +248,89 @@ function shapeSplitIntervalResult(raw: unknown): SplitIntervalResult {
           beforeCutpoint: toReferenceRiskIntervals(refRisks.before_cutpoint),
           afterCutpoint: toReferenceRiskIntervals(refRisks.after_cutpoint),
         };
+  }
+  return shaped;
+}
+
+/** A goodness-of-fit test node as the bridge marshals it (snake_case). */
+interface RawGoodnessOfFit {
+  method: string;
+  p_value: number;
+  variance: number[][];
+  statistic: { chi_square: number };
+  parameter: { degrees_of_freedom: number };
+}
+
+/** The generic marshalled validation result, before camelCase shaping. */
+interface RawValidationResult {
+  info: { risk_prediction_interval: string; dataset_name: string; model_name: string };
+  study_data: ColumnarTableResult;
+  incidence_rates: ColumnarTableResult;
+  category_specific_calibration: ColumnarTableResult;
+  auc: { auc: number; variance: number; lower_ci: number; upper_ci: number };
+  brier_score: { brier_score: number; variance: number; lower_ci: number; upper_ci: number };
+  expected_by_observed_ratio: { ratio: number; lower_ci: number; upper_ci: number };
+  calibration: { absolute_risk: RawGoodnessOfFit; relative_risk: RawGoodnessOfFit };
+  reference?: { absolute_risk: number[]; risk_score: number[] };
+  method: string;
+}
+
+function shapeGoodnessOfFit(g: RawGoodnessOfFit): GoodnessOfFitTest {
+  return {
+    method: g.method,
+    pValue: g.p_value,
+    variance: g.variance,
+    statistic: { chiSquare: g.statistic.chi_square },
+    parameter: { degreesOfFreedom: g.parameter.degrees_of_freedom },
+  };
+}
+
+/**
+ * Shape a validation result onto the public camelCase surface. Only the known
+ * scalar/CI metric containers and the frame *keys* are renamed; each frame's
+ * `columns` / `order` / `nRows` and the `info` values pass through verbatim — a
+ * blanket recursive rename would corrupt DataFrame column names like
+ * `observed_absolute_risk` / `linear_predictors_category`.
+ */
+function shapeValidationResult(raw: unknown): ValidationResult {
+  const r = raw as RawValidationResult;
+  const shaped: ValidationResult = {
+    info: {
+      riskPredictionInterval: r.info.risk_prediction_interval,
+      datasetName: r.info.dataset_name,
+      modelName: r.info.model_name,
+    },
+    auc: {
+      auc: r.auc.auc,
+      variance: r.auc.variance,
+      lowerCi: r.auc.lower_ci,
+      upperCi: r.auc.upper_ci,
+    },
+    brierScore: {
+      brierScore: r.brier_score.brier_score,
+      variance: r.brier_score.variance,
+      lowerCi: r.brier_score.lower_ci,
+      upperCi: r.brier_score.upper_ci,
+    },
+    expectedByObservedRatio: {
+      ratio: r.expected_by_observed_ratio.ratio,
+      lowerCi: r.expected_by_observed_ratio.lower_ci,
+      upperCi: r.expected_by_observed_ratio.upper_ci,
+    },
+    calibration: {
+      absoluteRisk: shapeGoodnessOfFit(r.calibration.absolute_risk),
+      relativeRisk: shapeGoodnessOfFit(r.calibration.relative_risk),
+    },
+    categorySpecificCalibration: r.category_specific_calibration,
+    studyData: r.study_data,
+    incidenceRates: r.incidence_rates,
+    method: r.method,
+  };
+  if (r.reference !== undefined) {
+    shaped.reference = {
+      absoluteRisk: r.reference.absolute_risk,
+      riskScore: r.reference.risk_score,
+    };
   }
   return shaped;
 }

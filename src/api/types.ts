@@ -201,9 +201,78 @@ export interface SplitIntervalResult {
   method: string;
 }
 
-export interface ValidationResult {
+// --- Validation result -------------------------------------------------------
+
+/** The follow-up window + naming echoed back by validation. */
+export interface ValidationInfo {
+  riskPredictionInterval: string;
+  datasetName: string;
+  modelName: string;
+}
+
+/** AUC with its variance and confidence interval. */
+export interface AucMetric {
+  auc: number;
+  variance: number;
+  lowerCi: number;
+  upperCi: number;
+}
+
+/** Brier score with its variance and confidence interval. */
+export interface BrierScoreMetric {
+  brierScore: number;
+  variance: number;
+  lowerCi: number;
+  upperCi: number;
+}
+
+/** Overall expected/observed ratio with its confidence interval. */
+export interface ExpectedByObservedRatio {
+  ratio: number;
+  lowerCi: number;
+  upperCi: number;
+}
+
+/** A goodness-of-fit test (Hosmer-Lemeshow for absolute risk; GOF for relative risk). */
+export interface GoodnessOfFitTest {
   method: string;
-  [key: string]: unknown;
+  pValue: number;
+  /** The test's variance matrix (row-major). */
+  variance: number[][];
+  statistic: { chiSquare: number };
+  parameter: { degreesOfFreedom: number };
+}
+
+/** Absolute- and relative-risk calibration tests. */
+export interface Calibration {
+  absoluteRisk: GoodnessOfFitTest;
+  relativeRisk: GoodnessOfFitTest;
+}
+
+/** Reference-population absolute risks + risk scores (present only if supplied/computed). */
+export interface ValidationReference {
+  absoluteRisk: number[];
+  riskScore: number[];
+}
+
+export interface ValidationResult {
+  info: ValidationInfo;
+  auc: AucMetric;
+  brierScore: BrierScoreMetric;
+  expectedByObservedRatio: ExpectedByObservedRatio;
+  calibration: Calibration;
+  /** Per-category calibration table (`category` + observed/predicted/CI columns). */
+  categorySpecificCalibration: ColumnarTableResult;
+  /**
+   * Per-subject study data with validation columns added, including the
+   * `linear_predictors_category` {@link CategoricalColumn}.
+   */
+  studyData: ColumnarTableResult;
+  /** Study vs. population incidence rates by age. */
+  incidenceRates: ColumnarTableResult;
+  /** Reference-population risks (present only when reference risks are supplied/computed). */
+  reference?: ValidationReference;
+  method: string;
 }
 
 // --- Runtime / loader --------------------------------------------------------
