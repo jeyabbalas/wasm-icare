@@ -7,15 +7,16 @@
  *  3. PyProxy lifetime discipline — every transient proxy created here is
  *     `.destroy()`ed in a `finally`, so nothing leaks into the WASM heap.
  *
- * Env-neutral: imports only `pyodide` TYPES + the params/errors modules.
- * Phase 2 converts results with a plain `toJs`; Phase 3 replaces that with the
- * `columnarize` + `getBuffer` zero-copy path.
+ * Env-neutral: imports only `pyodide` TYPES + the params/output/errors modules.
+ * Results flow through `bridge.columnarize` + `marshalColumnarResult` (the
+ * `getBuffer` zero-copy path); scalar inputs cross via `toPy`.
  */
 
 import type { PyodideInterface } from 'pyodide';
 import type { PyProxy } from 'pyodide/ffi';
 
 import type { Operation } from '../api/params';
+import { marshalColumnarResult } from '../output/marshal';
 import { wrapPythonError } from '../util/errors';
 
 /** JSON-safe summary returned by the `describe_dataframe` probe. */
@@ -34,7 +35,7 @@ export interface BridgeModule {
   pyicare_version(): string;
   runtime_versions(): PyProxy;
   describe_dataframe(columns: PyProxy): PyProxy;
-  run(op: string, kwargs: PyProxy, frames: PyProxy | null): PyProxy;
+  run(op: string, kwargs: PyProxy, frames?: PyProxy): PyProxy;
   columnarize(result: PyProxy, op: string): PyProxy;
   /** The namespace is itself a `PyProxy`; released in `Engine.close()`. */
   destroy(): void;
@@ -109,10 +110,16 @@ export const runBridge = {
   },
 
   /**
-   * Dispatch a py-icare operation. `kwargs` is the snake_case, `undefined`-
-   * pruned object from `toPythonKwargs`; `frames` is the optional object-sink
-   * map (Phase 4). Returns a plain JS object for now (Phase 3 swaps in the
-   * columnar/typed-array path).
+   * Dispatch a py-icare operation and marshal its result into a plain JS tree
+   * with typed-array columns. `kwargs` is the snake_case, `undefined`-pruned
+   * object from `toPythonKwargs`; `frames` is the optional object-sink map
+   * (Phase 4).
+   *
+   * The DataFrame-mode result is reshaped by `bridge.columnarize` into
+   * `{ structure, buffers }` and extracted zero-copy by `marshalColumnarResult`.
+   * The raw dict never crosses to JS as data — it is passed straight back into
+   * `columnarize` — so the only proxies to release are the transient inputs plus
+   * `raw`/`columnar`.
    */
   run(
     pyodide: PyodideInterface,
@@ -122,17 +129,23 @@ export const runBridge = {
     frames: Record<string, unknown> | null,
   ): unknown {
     const kwargsPy = pyodide.toPy(kwargs) as PyProxy;
-    const framesPy = frames != null ? (pyodide.toPy(frames) as PyProxy) : null;
-    let result: PyProxy | undefined;
+    // Omit `frames` entirely when absent — Pyodide 314 maps JS `null` to a
+    // `JsNull` object (not Python `None`), so passing `null` would break the
+    // `frames is not None` guard; a missing arg uses py-icare's `None` default.
+    const framesPy = frames != null ? (pyodide.toPy(frames) as PyProxy) : undefined;
+    let raw: PyProxy | undefined;
+    let columnar: PyProxy | undefined;
     try {
-      result = bridge.run(op, kwargsPy, framesPy);
-      return result.toJs({ dict_converter: Object.fromEntries });
+      raw = framesPy !== undefined ? bridge.run(op, kwargsPy, framesPy) : bridge.run(op, kwargsPy);
+      columnar = bridge.columnarize(raw, op);
+      return marshalColumnarResult(columnar);
     } catch (error) {
       throw wrapPythonError(`bridge.run(${op}) failed`, error);
     } finally {
       kwargsPy.destroy();
       framesPy?.destroy();
-      result?.destroy();
+      raw?.destroy();
+      columnar?.destroy();
     }
   },
 };

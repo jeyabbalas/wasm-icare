@@ -107,51 +107,66 @@ def run(op, kwargs, frames=None):
 
 
 def columnarize(result, op=None):
-    """Reshape a py-icare 'dataframe'-mode result into a marshalling-friendly tree.
+    """Reshape a py-icare 'dataframe'-mode result into a flat structure the JS
+    layer turns into zero-copy typed arrays.
 
-    Big numeric data becomes C-contiguous numpy ndarrays flagged with
-    ``_ARRAY_MARK`` (the JS marshaller extracts these zero-copy via
-    ``getBuffer``); DataFrames become ``_FRAME_MARK`` column maps; everything
-    else (dicts, lists, scalars, strings) passes through for ``toJs``. Authored
-    now; wired to the JS getBuffer path in Phase 3.
+    Returns ``{"structure": <tree>, "buffers": [ndarray, ...]}``:
+    - ``structure`` is fully JSON-native (contains NO numpy arrays), so the JS
+      side converts it with a single ``toJs``. Every numeric column/array is
+      replaced by a node ``{__icare_array__: True, dtype, shape, index}`` whose
+      ``index`` points into ``buffers``.
+    - ``buffers`` is a flat list of C-contiguous ndarrays; the JS side extracts
+      each zero-copy via ``getBuffer`` and splices it back in by index.
+
+    String columns stay inline (``__icare_strings__``); DataFrames become
+    ``__icare_frame__`` column maps; dicts/lists/scalars pass through. Keeping
+    the arrays out of ``structure`` means the JS marshaller never has to walk a
+    tree of PyProxies — it converts ``structure`` natively and iterates
+    ``buffers`` by index.
     """
-    return _columnarize(result)
+    buffers = []
+    structure = _columnarize(result, buffers)
+    return {"structure": structure, "buffers": buffers}
 
 
-def _columnarize(obj):
+def _columnarize(obj, buffers):
     if isinstance(obj, pd.DataFrame):
         return {
             _FRAME_MARK: True,
             "order": [str(c) for c in obj.columns],
             "n_rows": int(len(obj)),
-            "columns": {str(c): _columnarize_series(obj[c]) for c in obj.columns},
+            "columns": {
+                str(c): _columnarize_series(obj[c], buffers) for c in obj.columns
+            },
         }
     if isinstance(obj, pd.Series):
-        return _columnarize_series(obj)
+        return _columnarize_series(obj, buffers)
     if isinstance(obj, np.ndarray):
-        return _wrap_array(obj)
+        return _wrap_array(obj, buffers)
     if isinstance(obj, dict):
-        return {key: _columnarize(value) for key, value in obj.items()}
+        return {key: _columnarize(value, buffers) for key, value in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [_columnarize(value) for value in obj]
+        return [_columnarize(value, buffers) for value in obj]
     return obj
 
 
-def _columnarize_series(series):
+def _columnarize_series(series, buffers):
     numeric = pd.api.types.is_numeric_dtype(series)
     if numeric and not pd.api.types.is_bool_dtype(series):
-        return _wrap_array(series.to_numpy())
+        return _wrap_array(series.to_numpy(), buffers)
     return {
         _STRINGS_MARK: True,
         "data": [None if pd.isna(v) else str(v) for v in series],
     }
 
 
-def _wrap_array(array):
+def _wrap_array(array, buffers):
     contiguous = np.ascontiguousarray(array)
+    index = len(buffers)
+    buffers.append(contiguous)
     return {
         _ARRAY_MARK: True,
         "dtype": str(contiguous.dtype),
         "shape": list(contiguous.shape),
-        "data": contiguous,
+        "index": index,
     }

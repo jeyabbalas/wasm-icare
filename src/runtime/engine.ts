@@ -18,6 +18,7 @@ import {
   type BridgeModule,
   type DataFrameProbe,
 } from '../bridge/bridgeClient';
+import { writeInputBytes } from '../io/fsWrite';
 import { ICARE_BRIDGE_MODULE } from './config';
 
 export interface Engine {
@@ -29,12 +30,14 @@ export interface Engine {
   runtimeVersions(): Record<string, string>;
   /** Probe the JS↔Python columnar round-trip (Phase 2 health check). */
   probeDataFrame(columns: Record<string, unknown>): DataFrameProbe;
-  /** Low-level operation dispatch; the public ICARE handle wraps this in Phase 3. */
+  /** Low-level operation dispatch; the public ICARE handle wraps this. */
   run(
     op: Operation,
     kwargs: Record<string, unknown>,
     frames?: Record<string, unknown> | null,
   ): unknown;
+  /** Write input bytes into the Pyodide FS; returns the FS path (byte/FS sink). */
+  writeInputFile(name: string, bytes: Uint8Array): string;
   /** Release the resident bridge proxy and gate further calls. */
   close(): Promise<void>;
 }
@@ -69,6 +72,10 @@ export function createEngine(pyodide: PyodideInterface): Engine {
     run: (op, kwargs, frames = null) => {
       assertOpen();
       return runBridge.run(pyodide, bridge, op, kwargs, frames);
+    },
+    writeInputFile: (name, bytes) => {
+      assertOpen();
+      return writeInputBytes(pyodide, name, bytes);
     },
     close: async () => {
       if (closed) return;
