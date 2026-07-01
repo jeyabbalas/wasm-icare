@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Phase 0 skeleton: typecheck + build + unit tests + fixture-drift check.
+# Phase 9 adds the Node matrix (18/20/22), Pyodide E2E vs goldens, the Playwright
+# browser job, and publish.yml (npm + provenance).
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:unit
+      # Recomputes sha256 of the committed fixtures against test/fixtures.lock.json.
+      # Needs no py-icare checkout (verify mode reads only vendored files).
+      - run: npm run verify-fixtures
