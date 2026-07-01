@@ -5,9 +5,12 @@
  * the R-derived golden. Proves the object sink is dtype-faithful and the input
  * dispatch is correct.
  *
- * Forms: `path` (baseline) and `columnar` (Phase 4a). `url` (file://) and `Blob`
- * are added in Phase 4b; Arrow has its own spec (Phase 4c).
+ * Forms: `path` (baseline), `url` (file://), `Blob`, and `columnar`. Arrow has
+ * its own spec (Phase 4c).
  */
+
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
@@ -15,7 +18,7 @@ import type { TabularInput } from '../../../src/api/types';
 import { loadICARE } from '../../../src/index.node';
 import type { ICARE } from '../../../src/index.node';
 import { assertAllClose, assertDistributionClose } from '../../helpers/assert';
-import { csvToColumns } from '../../helpers/columns';
+import { columnsToRows, csvToColumns } from '../../helpers/columns';
 import { bpc3 } from '../../helpers/fixtures';
 import { loadGolden } from '../../helpers/goldens';
 import { summarizeDistribution } from '../../helpers/summarize';
@@ -29,13 +32,23 @@ interface CovariateGolden {
   reference_risk_summary: Record<string, number>;
 }
 
-type Form = 'path' | 'columnar';
+type Form = 'path' | 'url' | 'blob' | 'columnar' | 'rows';
 
-const FORMS: Form[] = ['path', 'columnar'];
+const FORMS: Form[] = ['path', 'url', 'blob', 'columnar', 'rows'];
 
-/** A BPC3 tabular fixture rendered in the requested input form. */
+/** A file-backed BPC3 fixture in a byte/FS form (path / file:// url / Blob). */
+function fileInput(name: string, form: Form): { path: string } | { url: URL } | Blob {
+  const path = bpc3(name);
+  if (form === 'url') return { url: pathToFileURL(path) };
+  if (form === 'blob') return new Blob([readFileSync(path)]);
+  return { path }; // 'path', and 'columnar' for non-tabular files (formula / log-OR)
+}
+
+/** A BPC3 tabular fixture; `columnar`/`rows` use the object sink, else a byte/FS form. */
 function tabular(name: string, form: Form): TabularInput {
-  return form === 'columnar' ? csvToColumns(bpc3(name)) : { path: bpc3(name) };
+  if (form === 'columnar') return csvToColumns(bpc3(name));
+  if (form === 'rows') return columnsToRows(csvToColumns(bpc3(name)));
+  return fileInput(name, form);
 }
 
 describe('BPC3 compute_absolute_risk — input-kind parity (covariate-only)', () => {
@@ -55,8 +68,8 @@ describe('BPC3 compute_absolute_risk — input-kind parity (covariate-only)', ()
       applyAgeIntervalLength: golden.age_interval_length,
       modelDiseaseIncidenceRates: tabular('age_specific_breast_cancer_incidence_rates.csv', form),
       modelCompetingIncidenceRates: tabular('age_specific_all_cause_mortality_rates.csv', form),
-      modelCovariateFormula: { path: bpc3('breast_cancer_covariate_model_formula.txt') },
-      modelLogRelativeRisk: { path: bpc3('breast_cancer_model_log_odds_ratios.json') },
+      modelCovariateFormula: fileInput('breast_cancer_covariate_model_formula.txt', form),
+      modelLogRelativeRisk: fileInput('breast_cancer_model_log_odds_ratios.json', form),
       modelReferenceDataset: tabular('reference_covariate_data.csv', form),
       applyCovariateProfile: tabular('query_covariate_profile.csv', form),
       returnLinearPredictors: true,

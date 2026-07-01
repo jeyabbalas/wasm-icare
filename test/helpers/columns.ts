@@ -10,7 +10,7 @@
 
 import { readFileSync } from 'node:fs';
 
-import type { ColumnarTable } from '../../src/api/types';
+import type { ColumnarTable, RowTable } from '../../src/api/types';
 
 function inferColumn(cells: string[]): Float64Array | number[] | string[] {
   let allNumeric = true;
@@ -54,4 +54,22 @@ export function csvToColumns(path: string): ColumnarTable {
     columns[name] = inferColumn(rows.map((row) => row[c] ?? ''));
   });
   return { columns };
+}
+
+/**
+ * Transpose a {@link ColumnarTable} into an array-of-objects (row-oriented),
+ * preserving each column's inferred value types. Feeds the row-array input form.
+ */
+export function columnsToRows(table: ColumnarTable): RowTable {
+  const names = Object.keys(table.columns);
+  const nRows = names.length > 0 ? (table.columns[names[0]!] as ArrayLike<unknown>).length : 0;
+  const rows: RowTable = [];
+  for (let i = 0; i < nRows; i += 1) {
+    const row: Record<string, unknown> = {};
+    for (const name of names) {
+      row[name] = (table.columns[name] as ArrayLike<unknown>)[i];
+    }
+    rows.push(row);
+  }
+  return rows;
 }
