@@ -8,6 +8,9 @@ export default defineConfig({
     index: 'src/index.ts',
     'index.node': 'src/index.node.ts',
     'index.browser': 'src/index.browser.ts',
+    // The browser module-worker entry, emitted as a sibling `dist/worker.js` so
+    // `new URL('./worker.js', import.meta.url)` resolves it at runtime.
+    worker: 'src/worker/worker.ts',
   },
   format: ['esm'],
   target: 'es2022',

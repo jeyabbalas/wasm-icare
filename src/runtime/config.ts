@@ -45,11 +45,21 @@ export const PYODIDE_DEFAULT_PACKAGES = [
 ] as const;
 
 /**
- * JsDelivr base URL for a pinned Pyodide distribution — used for browser
- * self-hosting / CDN override (Phase 7). The Node bootstrap does NOT use this:
- * it auto-locates its snapshot from `node_modules/pyodide`.
+ * JsDelivr base URL for a pinned Pyodide distribution — the zero-setup default
+ * the browser bootstrap loads `pyodide.mjs` + the scientific stack from (override
+ * with `indexURL` to self-host). The Node bootstrap does NOT use this: it
+ * auto-locates its snapshot from `node_modules/pyodide`.
  */
 export const PYODIDE_CDN_BASE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
+
+/**
+ * JsDelivr URL of the vendored pyicare wheel inside the published `wasm-icare`
+ * npm package — the browser bootstrap's default when `pyicareWheelUrl` is not
+ * given (the Pyodide CDN does not carry pyicare). Major-pinned (`@2`) so patch
+ * releases don't break it; the wheel filename is independently version-pinned.
+ * Self-hosting or offline consumers override via `pyicareWheelUrl`.
+ */
+export const PYICARE_WHEEL_CDN_URL = `https://cdn.jsdelivr.net/npm/wasm-icare@2/${PYICARE_WHEEL_PATH}`;
 
 /** Name under which the resident Python bridge module is registered in `sys.modules`. */
 export const ICARE_BRIDGE_MODULE = 'icare_bridge';

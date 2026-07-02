@@ -34,7 +34,7 @@ export const INIT_METHOD = '__init__';
 // --- Port abstraction --------------------------------------------------------
 
 /** A `Worker` / `MessagePort` / `DedicatedWorkerGlobalScope` (browser dialect). */
-interface BrowserPortLike {
+export interface BrowserPortLike {
   postMessage(message: unknown, transfer?: Transferable[]): void;
   addEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
   terminate?(): void;
@@ -43,7 +43,7 @@ interface BrowserPortLike {
 }
 
 /** A `worker_threads` `Worker` / `MessagePort` (Node dialect). */
-interface NodePortLike {
+export interface NodePortLike {
   postMessage(value: unknown, transferList?: readonly unknown[]): void;
   on(event: 'message', listener: (value: unknown) => void): void;
   terminate?(): unknown;

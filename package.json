@@ -34,6 +34,7 @@
       "worker": "./dist/index.browser.js",
       "default": "./dist/index.js"
     },
+    "./worker": "./dist/worker.js",
     "./assets/*": "./assets/*",
     "./package.json": "./package.json"
   },
