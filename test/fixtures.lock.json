@@ -1,6 +1,6 @@
 {
   "description": "sha256 lockfile for vendored py-icare test fixtures/goldens. Regenerate with `npm run sync-fixtures`; verify with `npm run verify-fixtures`.",
-  "pyicareRef": "0be8b08d3b9318421baa0e754d39d2a6a326ac8b",
+  "pyicareRef": "cded5b147f3a95489d821ad01a3cdc7a424a757f",
   "fileCount": 38,
   "totalBytes": 6464270,
   "files": [
