@@ -7,8 +7,8 @@
  *   - `createInProcessClient(engine)` — awaits the synchronous in-process engine
  *     (Node default; browser `useWorker:false`). Behaviour-identical to calling
  *     the engine directly, just Promise-wrapped.
- *   - `createWorkerClient(port)` — RPC over a Web Worker / worker_threads port
- *     (added in Phase 7b; browser default + Node opt-in).
+ *   - `createWorkerClient(port, options)` — RPC over a Web Worker / worker_threads
+ *     port; boots the remote engine on init (browser default + Node opt-in).
  *
  * `Engine` itself stays synchronous — it is what the worker host wraps. Because
  * every `Engine` method already returns a plain marshalled object (typed arrays +
@@ -18,6 +18,8 @@
 import type { Operation } from '../api/params';
 import type { BuiltModel, DataFrameProbe } from '../bridge/bridgeClient';
 import type { Engine } from '../runtime/engine';
+import { ICAREError } from '../util/errors';
+import { createCaller, INIT_METHOD, type PortAdapter } from './rpc';
 
 /**
  * The async surface the public ICARE handle is built over — an async mirror of
@@ -89,6 +91,47 @@ export function createInProcessClient(engine: Engine): EngineClient {
     },
     close() {
       return engine.close();
+    },
+  };
+}
+
+/**
+ * Wrap a worker {@link PortAdapter} as an {@link EngineClient} over the RPC in
+ * `rpc.ts`. Sends the init request (booting the remote engine with `options`) and
+ * resolves once the worker is ready; every method is then a request/response
+ * round-trip. Inputs are structure-cloned across the boundary (never transferred —
+ * batch frames may be `subarray` views); outputs are transferred by the host.
+ * `close` releases the remote engine, then terminates the worker and rejects any
+ * in-flight calls.
+ */
+export async function createWorkerClient(
+  port: PortAdapter,
+  options: unknown,
+): Promise<EngineClient> {
+  const caller = createCaller(port);
+  await caller.call(INIT_METHOD, [options]);
+
+  return {
+    pyodideVersion: () => caller.call('pyodideVersion', []) as Promise<string>,
+    icareVersion: () => caller.call('icareVersion', []) as Promise<string>,
+    runtimeVersions: () => caller.call('runtimeVersions', []) as Promise<Record<string, string>>,
+    probeDataFrame: (columns) => caller.call('probeDataFrame', [columns]) as Promise<DataFrameProbe>,
+    run: (op, kwargs, frames = null) => caller.call('run', [op, kwargs, frames]),
+    writeInputFile: (name, bytes) => caller.call('writeInputFile', [name, bytes]) as Promise<string>,
+    buildModel: (kwargs, frames = null) =>
+      caller.call('buildModel', [kwargs, frames]) as Promise<BuiltModel>,
+    applyModel: (handle, kwargs, frames = null) => caller.call('applyModel', [handle, kwargs, frames]),
+    freeModel: async (handle) => {
+      await caller.call('freeModel', [handle]);
+    },
+    heapBytes: () => caller.call('heapBytes', []) as Promise<number>,
+    close: async () => {
+      try {
+        await caller.call('close', []);
+      } finally {
+        port.terminate();
+        caller.rejectAll(new ICAREError('ICARE engine client was closed'));
+      }
     },
   };
 }
