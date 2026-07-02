@@ -4,6 +4,10 @@
 <img src="./images/wasm-icare-logo.png" style="width: 40%;">
 </p>
 
+<p align="center">
+<a href="https://github.com/jeyabbalas/wasm-icare/actions/workflows/ci.yml"><img src="https://github.com/jeyabbalas/wasm-icare/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+
 A TypeScript/JavaScript SDK for [iCARE](https://github.com/jeyabbalas/py-icare) (Individualized
 Coherent Absolute Risk Estimation) — build, validate, and apply absolute risk models in **Node.js and
 the browser**, with no Python installation. It runs the `py-icare` package inside
