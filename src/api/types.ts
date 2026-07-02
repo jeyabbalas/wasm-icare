@@ -275,6 +275,84 @@ export interface ValidationResult {
   method: string;
 }
 
+// --- Fit-once model (build → apply / applyBatches) ---------------------------
+
+/**
+ * Model arguments for {@link ICARE.buildAbsoluteRiskModel} — the profile-independent (fit-once)
+ * subset of `computeAbsoluteRisk`. This path fits a general-purpose covariate model, so the covariate
+ * trio (formula, log relative risks, reference dataset) is required; the SNP option is not supported
+ * here (use `computeAbsoluteRisk` for SNP models).
+ */
+export interface BuildAbsoluteRiskModelOptions {
+  modelDiseaseIncidenceRates: TabularInput;
+  modelCovariateFormula: FormulaInput;
+  modelLogRelativeRisk: LogOddsRatiosInput;
+  modelReferenceDataset: TabularInput;
+  modelCompetingIncidenceRates?: TabularInput;
+  modelReferenceDatasetWeightsVariableName?: string;
+  numImputations?: number;
+  seed?: number;
+}
+
+/** Apply a fitted model to one covariate profile batch (parity with a single `computeAbsoluteRisk`). */
+export interface ApplyProfileOptions {
+  applyAgeStart: AgeSpec;
+  applyAgeIntervalLength: AgeSpec;
+  applyCovariateProfile: TabularInput;
+  returnLinearPredictors?: boolean;
+  returnReferenceRisks?: boolean;
+}
+
+/**
+ * A stream of covariate profile batches for {@link AbsoluteRiskModelHandle.applyBatches}: either one
+ * in-memory {@link ColumnarTable} (sliced into `batchRows`-row chunks SDK-side) or an (async) iterable
+ * of columnar batches supplied by the caller.
+ */
+export type ProfileBatchSource =
+  | ColumnarTable
+  | Iterable<ColumnarTable>
+  | AsyncIterable<ColumnarTable>;
+
+/** Streaming apply options. Ages are scalars applied to every row in every batch. */
+export interface ApplyBatchesOptions {
+  applyAgeStart: number;
+  applyAgeIntervalLength: number;
+  /**
+   * Rows per batch when `source` is a single {@link ColumnarTable} sliced SDK-side (default 100_000).
+   * Ignored when `source` is already an (async) iterable of batches.
+   */
+  batchRows?: number;
+  returnLinearPredictors?: boolean;
+}
+
+/** Lean per-batch result: just the numeric result columns (+ ids) so peak heap stays ≈ one batch. */
+export interface ApplyBatchResult {
+  /** The batch's `id` values — string ids if it carried an `id` column, else the row-index fallback. */
+  ids?: string[] | number[];
+  riskEstimates: Float64Array;
+  linearPredictors?: Float64Array;
+  nRows: number;
+}
+
+/**
+ * A fit-once absolute-risk model resident in Python: the reference dataset was read (and the baseline
+ * hazard fitted) once at build time. Apply it to many profile batches without re-fitting; call
+ * {@link AbsoluteRiskModelHandle.free} when done.
+ */
+export interface AbsoluteRiskModelHandle {
+  /** Design-matrix column name → fitted log relative-risk (beta), from the one-time fit. */
+  readonly model: Record<string, number>;
+  /** Apply the fitted model to one covariate profile batch; returns the full {@link AbsoluteRiskResult}. */
+  apply(options: ApplyProfileOptions): Promise<AbsoluteRiskResult>;
+  /** Stream many profile batches through the fitted model, yielding a lean numeric result per batch. */
+  applyBatches(
+    source: ProfileBatchSource,
+    options: ApplyBatchesOptions,
+  ): AsyncIterable<ApplyBatchResult>;
+  /** Release the resident model in Python. Idempotent. */
+  free(): Promise<void>;
+}
+
 // --- Runtime / loader --------------------------------------------------------
 
 /** Options for `loadICARE` (fully specified across Phases 2/7/8). */
@@ -302,6 +380,14 @@ export interface ICARE {
   validateAbsoluteRiskModel(
     options: ValidateAbsoluteRiskModelOptions,
   ): Promise<ValidationResult>;
+  /**
+   * Fit a reusable model once (the reference dataset is read a single time), then apply it to many
+   * covariate profile batches via the returned handle — the streaming / large-dataset path.
+   * Covariate models only; use `computeAbsoluteRisk` for SNP models.
+   */
+  buildAbsoluteRiskModel(
+    options: BuildAbsoluteRiskModelOptions,
+  ): Promise<AbsoluteRiskModelHandle>;
   /** Release the Pyodide runtime and any workers. */
   close(): Promise<void>;
 }

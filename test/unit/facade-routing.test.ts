@@ -19,6 +19,15 @@ function makeEngine() {
     statistic: { chi_square: 0 },
     parameter: { degrees_of_freedom: 0 },
   };
+  const modelCalls = {
+    build: [] as Array<{ kwargs: Record<string, unknown>; frames: Record<string, unknown> | null }>,
+    apply: [] as Array<{
+      handle: number;
+      kwargs: Record<string, unknown>;
+      frames: Record<string, unknown> | null;
+    }>,
+    free: [] as number[],
+  };
   const engine = {
     run(op: string, kwargs: Record<string, unknown>, frames?: Record<string, unknown> | null) {
       calls.push({ op, kwargs, frames });
@@ -38,10 +47,41 @@ function makeEngine() {
       }
       return { model: {}, profile: emptyFrame, method: 'stub' };
     },
+    buildModel(kwargs: Record<string, unknown>, frames?: Record<string, unknown> | null) {
+      modelCalls.build.push({ kwargs, frames: frames ?? null });
+      return { handle: 7, model: { Intercept: 0, x: 0.5 } };
+    },
+    applyModel(handle: number, kwargs: Record<string, unknown>, frames?: Record<string, unknown> | null) {
+      modelCalls.apply.push({ handle, kwargs, frames: frames ?? null });
+      return {
+        model: {},
+        profile: {
+          columns: {
+            id: ['a', 'b'],
+            risk_estimates: new Float64Array([0.1, 0.2]),
+            linear_predictors: new Float64Array([1.1, 1.2]),
+          },
+          order: ['id', 'risk_estimates', 'linear_predictors'],
+          nRows: 2,
+        },
+        method: 'stub',
+      };
+    },
+    freeModel(handle: number) {
+      modelCalls.free.push(handle);
+    },
     async close() {},
   } as unknown as Engine;
-  return { engine, calls };
+  return { engine, calls, modelCalls };
 }
+
+/** Minimal required build args (covariate trio + disease rates), reference as a {path} kwarg. */
+const BUILD_ARGS = {
+  modelDiseaseIncidenceRates: { path: 'inc.csv' },
+  modelCovariateFormula: 'y ~ x',
+  modelLogRelativeRisk: { x: 0.5 },
+  modelReferenceDataset: { path: 'ref.csv' },
+} as const;
 
 /** A materializer that routes columnar tables to a frame, everything else to a kwarg. */
 const materialize: InputMaterializer = async (input, _kind, jsName) => {
@@ -167,5 +207,117 @@ describe('facade input routing — kwargs vs frames', () => {
         },
       }),
     ).rejects.toThrow(/icareModelParameters/);
+  });
+});
+
+describe('fit-once model routing — build / apply / applyBatches / free', () => {
+  test('buildAbsoluteRiskModel routes model args (columnar → frames) to engine.buildModel', async () => {
+    const { engine, modelCalls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+
+    const model = await icare.buildAbsoluteRiskModel({
+      modelDiseaseIncidenceRates: { path: 'inc.csv' },
+      modelCovariateFormula: 'y ~ x',
+      modelLogRelativeRisk: { x: 0.5 },
+      modelReferenceDataset: { columns: { c: [1] } },
+    });
+
+    expect(modelCalls.build).toHaveLength(1);
+    const b = modelCalls.build[0]!;
+    expect(b.kwargs.model_disease_incidence_rates_path).toBe('resolved:modelDiseaseIncidenceRates');
+    expect(b.kwargs.model_covariate_formula_path).toBe('resolved:modelCovariateFormula');
+    // Columnar reference → frame keyed by py-name, NOT a kwarg.
+    expect(b.kwargs).not.toHaveProperty('model_reference_dataset_path');
+    expect(b.frames).toEqual({
+      model_reference_dataset_path: { columns: { c: [1] }, dtypes: { c: 'i8' } },
+    });
+    // The fitted betas are exposed on the handle.
+    expect(model.model).toEqual({ Intercept: 0, x: 0.5 });
+  });
+
+  test('handle.apply routes the profile to engine.applyModel(handle, ...) and shapes the result', async () => {
+    const { engine, modelCalls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+    const model = await icare.buildAbsoluteRiskModel(BUILD_ARGS);
+
+    const result = await model.apply({
+      applyAgeStart: 50,
+      applyAgeIntervalLength: 5,
+      applyCovariateProfile: { columns: { c: [1] } },
+      returnLinearPredictors: true,
+    });
+
+    expect(modelCalls.apply).toHaveLength(1);
+    const a = modelCalls.apply[0]!;
+    expect(a.handle).toBe(7);
+    expect(a.kwargs.apply_age_start).toBe(50);
+    expect(a.kwargs.return_linear_predictors).toBe(true);
+    // Columnar profile → frame under apply_covariate_profile_path.
+    expect(a.frames).toEqual({
+      apply_covariate_profile_path: { columns: { c: [1] }, dtypes: { c: 'i8' } },
+    });
+    expect(result.profile.columns.risk_estimates).toBeInstanceOf(Float64Array);
+  });
+
+  test('applyBatches slices one ColumnarTable into batchRows chunks — one applyModel per chunk', async () => {
+    const { engine, modelCalls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+    const model = await icare.buildAbsoluteRiskModel(BUILD_ARGS);
+
+    const table = { columns: { c: [1, 2, 3, 4, 5] } }; // 5 rows, batchRows 2 => 3 batches
+    const batches = [];
+    for await (const batch of model.applyBatches(table, {
+      applyAgeStart: 50,
+      applyAgeIntervalLength: 5,
+      batchRows: 2,
+      returnLinearPredictors: true,
+    })) {
+      batches.push(batch);
+    }
+
+    expect(modelCalls.apply).toHaveLength(3);
+    expect(batches).toHaveLength(3);
+    expect(batches[0]!.riskEstimates).toBeInstanceOf(Float64Array);
+    expect(batches[0]!.linearPredictors).toBeInstanceOf(Float64Array);
+    expect(batches[0]!.ids).toEqual(['a', 'b']);
+    expect(batches[0]!.nRows).toBe(2);
+  });
+
+  test('applyBatches consumes a caller-supplied async iterable of batches as-is', async () => {
+    const { engine, modelCalls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+    const model = await icare.buildAbsoluteRiskModel(BUILD_ARGS);
+
+    async function* source() {
+      yield { columns: { c: [1] } };
+      yield { columns: { c: [2] } };
+    }
+    let count = 0;
+    for await (const _ of model.applyBatches(source(), {
+      applyAgeStart: 50,
+      applyAgeIntervalLength: 5,
+    })) {
+      count += 1;
+    }
+    expect(count).toBe(2);
+    expect(modelCalls.apply).toHaveLength(2);
+  });
+
+  test('free calls engine.freeModel(handle) once (idempotent) and blocks further applies', async () => {
+    const { engine, modelCalls } = makeEngine();
+    const icare = createICARE(engine, materialize);
+    const model = await icare.buildAbsoluteRiskModel(BUILD_ARGS);
+
+    await model.free();
+    await model.free(); // idempotent — no second freeModel call
+    expect(modelCalls.free).toEqual([7]);
+
+    await expect(
+      model.apply({
+        applyAgeStart: 50,
+        applyAgeIntervalLength: 5,
+        applyCovariateProfile: { path: 'p.csv' },
+      }),
+    ).rejects.toThrow(/freed/);
   });
 });

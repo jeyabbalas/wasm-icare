@@ -10,9 +10,12 @@
 import type { FramePayload } from '../io/columnar';
 import type { Engine } from '../runtime/engine';
 import { ICAREError } from '../util/errors';
+import { createModelHandle } from './buildAbsoluteRiskModel';
 import { paramSpecs, toPythonKwargs, type Operation, type ParamKind } from './params';
 import type {
+  AbsoluteRiskModelHandle,
   AbsoluteRiskResult,
+  BuildAbsoluteRiskModelOptions,
   ColumnarTableResult,
   ComputeAbsoluteRiskOptions,
   ComputeAbsoluteRiskSplitIntervalOptions,
@@ -80,6 +83,14 @@ export function createICARE(engine: Engine, materialize: InputMaterializer): ICA
       return shapeValidationResult(engine.run('validate', kwargs, frames));
     },
 
+    async buildAbsoluteRiskModel(
+      options: BuildAbsoluteRiskModelOptions,
+    ): Promise<AbsoluteRiskModelHandle> {
+      const { kwargs, frames } = await resolveInputs('buildModel', options, materialize);
+      const { handle, model } = engine.buildModel(kwargs, frames);
+      return createModelHandle(engine, materialize, handle, model);
+    },
+
     async close(): Promise<void> {
       await engine.close();
     },
@@ -98,7 +109,7 @@ interface ResolvedCall {
  * routed to `frames` keyed by the py-icare parameter name and dropped from the
  * kwargs (so a given input goes to EITHER kwargs OR frames, never both).
  */
-async function resolveInputs(
+export async function resolveInputs(
   op: Operation,
   options: object,
   materialize: InputMaterializer,
@@ -192,7 +203,7 @@ interface RawAbsoluteRiskResult {
 }
 
 /** Map the generic marshalled tree onto the public camelCase result type. */
-function shapeAbsoluteRiskResult(raw: unknown): AbsoluteRiskResult {
+export function shapeAbsoluteRiskResult(raw: unknown): AbsoluteRiskResult {
   const result = raw as RawAbsoluteRiskResult;
   const shaped: AbsoluteRiskResult = {
     model: result.model,
