@@ -4,16 +4,28 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Nightly at 07:00 UTC — runs the slow E2E suite (see the e2e-slow job below).
+    - cron: '0 7 * * *'
+  workflow_dispatch:
 
-# Phase 0 skeleton: typecheck + build + unit tests + fixture-drift check.
-# Phase 9 adds the Node matrix (18/20/22), Pyodide E2E vs goldens, the Playwright
-# browser job, and publish.yml (npm + provenance).
+# Least privilege: CI only reads the repo. Publishing lives in publish.yml.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
+  # Fast, Pyodide-free gates across the supported Node range.
+  checks:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node: ['20']
+        node: ['18', '20', '22']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +36,101 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:unit
-      # Recomputes sha256 of the committed fixtures against test/fixtures.lock.json.
-      # Needs no py-icare checkout (verify mode reads only vendored files).
+      # Recomputes sha256 of the committed fixtures against test/fixtures.lock.json
+      # (verify mode reads only vendored files — no py-icare checkout needed).
       - run: npm run verify-fixtures
+
+  # Publish gates: exports/type correctness (publint, attw) + tarball allowlist and
+  # bundle-size (check-package) + a real install-and-import of the packed tarball
+  # (smoke-tarball). Node-version-independent, so run once on 20.
+  package:
+    needs: [checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run publint
+      - run: npm run attw
+      - run: npm run check-package
+      - run: npm run smoke-tarball
+
+  # Real-Pyodide fast E2E vs the R-derived goldens. Node 20 only — WASM numerics are
+  # node-version-independent, so the extra matrix legs would just triple the boots.
+  e2e:
+    needs: [checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      # The Pyodide runtime + scientific wheels are downloaded from jsDelivr into
+      # .pyodide-cache on a cold cache (warm-cache.setup.ts), then reused.
+      - name: Cache Pyodide runtime + wheels
+        uses: actions/cache@v4
+        with:
+          path: .pyodide-cache
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          restore-keys: |
+            pyodide-${{ runner.os }}-
+      - run: npm run build
+      - run: npm run test:e2e
+
+  # The same marshalling path through a real headless Chromium (module worker +
+  # in-process), self-hosting Pyodide offline. Node 20.
+  browser:
+    needs: [checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Cache Pyodide runtime + wheels
+        uses: actions/cache@v4
+        with:
+          path: .pyodide-cache
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          restore-keys: |
+            pyodide-${{ runner.os }}-
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      # test:browser builds first (npm run build && vitest run --project browser).
+      - run: npm run test:browser
+
+  # Slow E2E (nested case-control validation, build-once/apply-many, worker_threads):
+  # nightly + manual only, to keep PR feedback fast.
+  e2e-slow:
+    needs: [checks]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Cache Pyodide runtime + wheels
+        uses: actions/cache@v4
+        with:
+          path: .pyodide-cache
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          restore-keys: |
+            pyodide-${{ runner.os }}-
+      # Build required: worker_threads.bpc3.slow.test.ts self-skips unless dist/ exists.
+      - run: npm run build
+      - run: npm run test:e2e:slow
