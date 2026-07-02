@@ -11,6 +11,9 @@ export default defineConfig({
     // The browser module-worker entry, emitted as a sibling `dist/worker.js` so
     // `new URL('./worker.js', import.meta.url)` resolves it at runtime.
     worker: 'src/worker/worker.ts',
+    // The Node worker_threads entry (opt-in `useWorker:true`), emitted as
+    // `dist/nodeWorker.js`; carries the Node loader like `index.node.js`.
+    nodeWorker: 'src/worker/nodeWorker.ts',
   },
   format: ['esm'],
   target: 'es2022',
