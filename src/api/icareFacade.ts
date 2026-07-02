@@ -8,8 +8,8 @@
  */
 
 import type { FramePayload } from '../io/columnar';
-import type { Engine } from '../runtime/engine';
 import { ICAREError } from '../util/errors';
+import type { EngineClient } from '../worker/transport';
 import { createModelHandle } from './buildAbsoluteRiskModel';
 import { paramSpecs, toPythonKwargs, type Operation, type ParamKind } from './params';
 import type {
@@ -59,40 +59,40 @@ const DATA_KINDS: ReadonlySet<ParamKind> = new Set<ParamKind>([
   'snpInfo',
 ]);
 
-/** Build the public handle over a ready engine + an input materializer. */
-export function createICARE(engine: Engine, materialize: InputMaterializer): ICARE {
+/** Build the public handle over a ready engine client + an input materializer. */
+export function createICARE(client: EngineClient, materialize: InputMaterializer): ICARE {
   return {
     async computeAbsoluteRisk(
       options: ComputeAbsoluteRiskOptions,
     ): Promise<AbsoluteRiskResult> {
       const { kwargs, frames } = await resolveInputs('compute', options, materialize);
-      return shapeAbsoluteRiskResult(engine.run('compute', kwargs, frames));
+      return shapeAbsoluteRiskResult(await client.run('compute', kwargs, frames));
     },
 
     async computeAbsoluteRiskSplitInterval(
       options: ComputeAbsoluteRiskSplitIntervalOptions,
     ): Promise<SplitIntervalResult> {
       const { kwargs, frames } = await resolveInputs('splitInterval', options, materialize);
-      return shapeSplitIntervalResult(engine.run('splitInterval', kwargs, frames));
+      return shapeSplitIntervalResult(await client.run('splitInterval', kwargs, frames));
     },
 
     async validateAbsoluteRiskModel(
       options: ValidateAbsoluteRiskModelOptions,
     ): Promise<ValidationResult> {
       const { kwargs, frames } = await resolveInputs('validate', options, materialize);
-      return shapeValidationResult(engine.run('validate', kwargs, frames));
+      return shapeValidationResult(await client.run('validate', kwargs, frames));
     },
 
     async buildAbsoluteRiskModel(
       options: BuildAbsoluteRiskModelOptions,
     ): Promise<AbsoluteRiskModelHandle> {
       const { kwargs, frames } = await resolveInputs('buildModel', options, materialize);
-      const { handle, model } = engine.buildModel(kwargs, frames);
-      return createModelHandle(engine, materialize, handle, model);
+      const { handle, model } = await client.buildModel(kwargs, frames);
+      return createModelHandle(client, materialize, handle, model);
     },
 
     async close(): Promise<void> {
-      await engine.close();
+      await client.close();
     },
   };
 }

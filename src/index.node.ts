@@ -16,18 +16,21 @@ import { createICARE } from './api/icareFacade';
 import type { ICARE, LoadICAREOptions } from './api/types';
 import { createNodeMaterializer } from './io/materialize-node';
 import { bootstrapNodeEngine } from './runtime/bootstrap-node';
+import { createInProcessClient } from './worker/transport';
 
 /**
  * Boot Pyodide with the vendored pyicare wheel and return the ICARE handle. In
  * Node this is the "vendored snapshot" path: the runtime + scientific stack come
- * from `node_modules/pyodide`, the pyicare wheel from `assets/`. Only
- * `options.packages` is honored in Phase 3 (worker / indexURL / offline arrive
- * in Phases 7–8).
+ * from `node_modules/pyodide`, the pyicare wheel from `assets/`. The engine runs
+ * in-process (Node default); the `worker_threads` opt-in (`useWorker:true`) lands
+ * in Phase 7d. Only `options.packages` is honored today (indexURL / offline arrive
+ * in Phase 8).
  */
 export async function loadICARE(options: LoadICAREOptions = {}): Promise<ICARE> {
   const engine = await bootstrapNodeEngine(
     options.packages ? { packages: options.packages } : {},
   );
-  const materialize = createNodeMaterializer(engine);
-  return createICARE(engine, materialize);
+  const client = createInProcessClient(engine);
+  const materialize = createNodeMaterializer(client);
+  return createICARE(client, materialize);
 }

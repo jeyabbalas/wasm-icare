@@ -15,30 +15,35 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import type { InputMaterializer, MaterializedInput } from '../api/icareFacade';
-import type { Engine } from '../runtime/engine';
 import { ICAREError } from '../util/errors';
+import type { EngineClient } from '../worker/transport';
 import { isArrowTable, toArrowFramePayload } from './arrow';
 import { basename } from './bytes';
 import { columnarizeRows, toFramePayload } from './columnar';
 import { isBlobInput, isColumnarInput, isPathInput, isRowTable, isUrlInput } from './guards';
 
-/** Create a materializer bound to a ready engine's Pyodide FS. */
-export function createNodeMaterializer(engine: Engine): InputMaterializer {
+/**
+ * Create a materializer bound to a ready engine client. Host-file / URL / Blob
+ * reads happen here on the calling thread (via `node:fs` / `fetch`); only the raw
+ * bytes cross into the engine via `client.writeInputFile` (an RPC on the worker
+ * path, a direct FS write in-process).
+ */
+export function createNodeMaterializer(client: EngineClient): InputMaterializer {
   return async (input, kind, jsName): Promise<MaterializedInput> => {
     if (input == null) {
       return { via: 'kwarg', value: input };
     }
     if (isPathInput(input)) {
       const bytes = await readFile(input.path);
-      return { via: 'kwarg', value: engine.writeInputFile(basename(input.path), bytes) };
+      return { via: 'kwarg', value: await client.writeInputFile(basename(input.path), bytes) };
     }
     if (isUrlInput(input)) {
       const { bytes, name } = await readUrlBytes(input.url);
-      return { via: 'kwarg', value: engine.writeInputFile(name, bytes) };
+      return { via: 'kwarg', value: await client.writeInputFile(name, bytes) };
     }
     if (isBlobInput(input)) {
       const bytes = new Uint8Array(await input.arrayBuffer());
-      return { via: 'kwarg', value: engine.writeInputFile(blobName(input), bytes) };
+      return { via: 'kwarg', value: await client.writeInputFile(blobName(input), bytes) };
     }
     if (typeof input === 'string') {
       // Inline Patsy formula (or an already-resolved FS path string).

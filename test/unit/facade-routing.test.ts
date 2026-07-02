@@ -2,9 +2,13 @@ import { describe, expect, test } from 'vitest';
 
 import { createICARE, type InputMaterializer } from '../../src/api/icareFacade';
 import { isColumnarInput } from '../../src/io/guards';
-import type { Engine } from '../../src/runtime/engine';
+import type { EngineClient } from '../../src/worker/transport';
 
-/** A stub engine that records the last `run` call and returns an empty result. */
+/**
+ * A stub engine client that records the last `run` call and returns an empty result.
+ * Its methods return values synchronously; the facade `await`s them, which resolves
+ * a plain value just as it would a Promise — so no async wrapping is needed here.
+ */
 function makeEngine() {
   const calls: Array<{
     op: string;
@@ -71,7 +75,7 @@ function makeEngine() {
       modelCalls.free.push(handle);
     },
     async close() {},
-  } as unknown as Engine;
+  } as unknown as EngineClient;
   return { engine, calls, modelCalls };
 }
 

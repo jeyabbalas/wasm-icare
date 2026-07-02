@@ -4,6 +4,7 @@ import { createICARE } from '../../../src/api/icareFacade';
 import type { AbsoluteRiskModelHandle, ColumnarTable, ICARE } from '../../../src/api/types';
 import { createNodeMaterializer } from '../../../src/io/materialize-node';
 import { bootstrapNodeEngine, type Engine } from '../../../src/index.node';
+import { createInProcessClient } from '../../../src/worker/transport';
 import { assertAllClose, assertDistributionClose } from '../../helpers/assert';
 import { csvToColumns } from '../../helpers/columns';
 import { bpc3 } from '../../helpers/fixtures';
@@ -84,7 +85,10 @@ describe('BPC3 build-once / apply-many (fit/apply split)', () => {
 
   beforeAll(async () => {
     engine = await bootstrapNodeEngine();
-    icare = createICARE(engine, createNodeMaterializer(engine));
+    // Wrap the raw engine in an in-process client for the facade; keep `engine` itself
+    // for the raw `engine.heapBytes()` reads the watermark assertion needs.
+    const client = createInProcessClient(engine);
+    icare = createICARE(client, createNodeMaterializer(client));
     golden = loadGolden<CovariateGolden>('bpc3_covariate_only.json');
 
     // Fit ONCE — the reference dataset is read a single time here.

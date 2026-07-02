@@ -9,7 +9,7 @@
  * - `free` releases the resident Python model.
  */
 
-import type { Engine } from '../runtime/engine';
+import type { EngineClient } from '../worker/transport';
 import { resolveInputs, shapeAbsoluteRiskResult, type InputMaterializer } from './icareFacade';
 import type {
   AbsoluteRiskModelHandle,
@@ -23,7 +23,7 @@ import type {
 
 /** Build the public {@link AbsoluteRiskModelHandle} over a resident model handle + its fitted betas. */
 export function createModelHandle(
-  engine: Engine,
+  client: EngineClient,
   materialize: InputMaterializer,
   handle: number,
   model: Record<string, number>,
@@ -36,7 +36,7 @@ export function createModelHandle(
   async function apply(options: ApplyProfileOptions): Promise<AbsoluteRiskResult> {
     assertLive();
     const { kwargs, frames } = await resolveInputs('applyModel', options, materialize);
-    return shapeAbsoluteRiskResult(engine.applyModel(handle, kwargs, frames));
+    return shapeAbsoluteRiskResult(await client.applyModel(handle, kwargs, frames));
   }
 
   async function* applyBatches(
@@ -57,7 +57,7 @@ export function createModelHandle(
         { applyAgeStart, applyAgeIntervalLength, applyCovariateProfile: batch, returnLinearPredictors },
         materialize,
       );
-      const result = shapeAbsoluteRiskResult(engine.applyModel(handle, kwargs, frames));
+      const result = shapeAbsoluteRiskResult(await client.applyModel(handle, kwargs, frames));
       yield toApplyBatchResult(result, returnLinearPredictors === true);
     }
   }
@@ -69,7 +69,7 @@ export function createModelHandle(
     free: async () => {
       if (freed) return;
       freed = true;
-      engine.freeModel(handle);
+      await client.freeModel(handle);
     },
   };
 }
@@ -94,7 +94,12 @@ function isColumnarTable(source: ProfileBatchSource): source is ColumnarTable {
   return typeof source === 'object' && source !== null && 'columns' in source;
 }
 
-/** Slice a single columnar table into ≤ batchRows-row chunks (typed arrays as subarray views; no copy). */
+/**
+ * Slice a single columnar table into ≤ batchRows-row chunks (typed arrays as subarray VIEWS; no copy).
+ * Invariant: a view shares the caller's parent buffer, so batch frames must never be listed as a
+ * `postMessage` transferable on the worker path — transferring one would detach every other batch.
+ * The RPC transport copies frames in (structured clone) for exactly this reason.
+ */
 function* sliceColumnarTable(table: ColumnarTable, batchRows: number): Iterable<ColumnarTable> {
   if (!Number.isInteger(batchRows) || batchRows <= 0) {
     throw new Error(`batchRows must be a positive integer, got ${batchRows}`);
