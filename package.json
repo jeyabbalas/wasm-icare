@@ -25,7 +25,8 @@
   "files": [
     "dist",
     "assets",
-    "scripts/vendor-pyodide.mjs"
+    "scripts/vendor-pyodide.mjs",
+    "CHANGELOG.md"
   ],
   "types": "./dist/index.d.ts",
   "exports": {
