@@ -83,6 +83,10 @@ const NODE_E2E = {
   hookTimeout: 300_000,
   testTimeout: 120_000,
   passWithNoTests: true,
+  // Warm `.pyodide-cache` once before the Node E2E run (same Node setup the browser
+  // project uses) so the offline-mirror spec finds the scientific wheels locally
+  // regardless of file order, and every boot skips the first-run CDN download.
+  globalSetup: ['test/e2e/browser/warm-cache.setup.ts'],
 };
 
 export default defineConfig({

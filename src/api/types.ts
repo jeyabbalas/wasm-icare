@@ -355,13 +355,23 @@ export interface AbsoluteRiskModelHandle {
 
 // --- Runtime / loader --------------------------------------------------------
 
-/** Options for `loadICARE` (fully specified across Phases 2/7/8). */
+/** Options for `loadICARE` (honored in both Node and the browser). */
 export interface LoadICAREOptions {
-  /** Base URL of a self-hosted Pyodide distribution. */
+  /**
+   * Base URL (or absolute filesystem path, in Node) of a self-hosted Pyodide
+   * distribution — e.g. a mirror produced by `npx wasm-icare-vendor <dir>`.
+   * Defaults to the pinned CDN (browser) / `node_modules/pyodide` (Node).
+   */
   indexURL?: string;
-  /** Override URL for the pyicare wheel (defaults to the vendored snapshot). */
+  /** Override URL/path for the pyicare wheel (defaults to the vendored snapshot). */
   pyicareWheelUrl?: string;
-  /** Disable any PyPI/micropip fallback (fully offline). */
+  /**
+   * Require fully self-hosted assets: no CDN fallback for the Pyodide runtime or
+   * the scientific wheels. `indexURL` **and** `pyicareWheelUrl` must then be given
+   * (and, in Node, `indexURL` must point at a mirror that also contains the
+   * scientific wheels — the bundled `node_modules/pyodide` has only the core
+   * runtime). Enforced identically in Node and the browser.
+   */
   offline?: boolean;
   /** Extra Pyodide packages to load (e.g. `['pyarrow']`). */
   packages?: string[];
