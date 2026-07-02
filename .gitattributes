@@ -1,0 +1,7 @@
+# Vendored test fixtures and R-derived goldens are byte-exact blobs pinned by
+# test/fixtures.lock.json (sha256). Disable end-of-line conversion so a fresh
+# checkout matches the lock on every platform — some contributors have
+# core.autocrlf=input, which strips CR on commit and would break the sha256 check
+# for the CSVs that legitimately contain CRLF. `-text` keeps them diffable.
+test/fixtures/** -text
+test/golden/** -text
