@@ -40,7 +40,7 @@ describe('engine smoke (Node runtime + Python bridge)', () => {
   test('scientific stack imports; versions satisfy the pins', () => {
     const versions = engine.runtimeVersions();
     expect(versions).toMatchObject({
-      icare: '1.2.0',
+      icare: '1.3.0',
       numpy: '2.4.3',
       pandas: '3.0.2',
       scipy: '1.18.0',

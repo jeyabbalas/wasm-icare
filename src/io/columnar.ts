@@ -1,7 +1,7 @@
 /**
  * In-memory columnar object sink — turn a {@link ColumnarTable} (or a row-array)
  * into a dtype-tagged `FramePayload` that the bridge's `build_df` rebuilds into a
- * pandas DataFrame, which py-icare 1.2.0 accepts on any `*_path` argument.
+ * pandas DataFrame, which py-icare (since 1.2.0) accepts on any `*_path` argument.
  *
  * Correctness rests on ONE contract: reproduce pandas `read_csv` column-dtype
  * inference —

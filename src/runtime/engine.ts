@@ -24,7 +24,7 @@ import { ICARE_BRIDGE_MODULE } from './config';
 export interface Engine {
   /** Pyodide distribution version (e.g. '314.0.2'). */
   pyodideVersion(): string;
-  /** Installed pyicare version — '1.2.0' proves the vendored wheel loaded. */
+  /** Installed pyicare version — '1.3.0' proves the vendored wheel loaded. */
   icareVersion(): string;
   /** Versions of the Python runtime + the scientific stack. */
   runtimeVersions(): Record<string, string>;
