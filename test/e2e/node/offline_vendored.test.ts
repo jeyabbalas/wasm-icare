@@ -1,13 +1,15 @@
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import type { ICARE } from '../../../src/api/types';
 import { loadICARE } from '../../../src/index.node';
-import { pyicareWheelPath, pyodideIndexPath } from '../../../src/runtime/assets-node';
+import { pyicareWheelPath } from '../../../src/runtime/assets-node';
 import { PYICARE_WHEEL_FILENAME } from '../../../src/runtime/config';
 import { assertAllClose } from '../../helpers/assert';
 import { bpc3 } from '../../helpers/fixtures';
@@ -15,25 +17,19 @@ import { loadGolden } from '../../helpers/goldens';
 import { ATOL_DETERMINISTIC } from '../../helpers/tolerances';
 
 /**
- * Phase 8 — `loadICARE({ offline: true, indexURL, pyicareWheelUrl })` in Node, booted
- * from a self-contained Pyodide mirror (the layout `npx wasm-icare-vendor <dir>`
- * produces). The mirror is assembled here from the installed `pyodide` core runtime
- * + the scientific wheels warmed into `.pyodide-cache` (globalSetup) + the vendored
- * pyicare wheel, then used as BOTH `indexURL` and — because bootstrapNodeEngine
- * redirects the package cache to the mirror on offline boot — the wheel source. No
- * network: every asset resolves inside the temp mirror.
+ * Phase 8 — end-to-end proof of the offline self-host path: run the real
+ * `wasm-icare-vendor` CLI to produce a Pyodide mirror, then boot
+ * `loadICARE({ offline: true, indexURL, pyicareWheelUrl })` from it and match the
+ * BPC3 golden. bootstrapNodeEngine redirects the package cache to the mirror on
+ * offline boot, so every asset resolves inside the temp dir — no network. The CLI
+ * sources its wheels from `.pyodide-cache` (warmed by the e2e globalSetup) via
+ * `--cache`, so this spec needs no network either.
  */
 
-// The Pyodide core files loadPyodide reads from `indexURL` (mirrors what the CLI copies).
-const CORE_FILES = [
-  'pyodide.mjs',
-  'pyodide.asm.mjs',
-  'pyodide.asm.wasm',
-  'python_stdlib.zip',
-  'pyodide-lock.json',
-] as const;
+const CLI = fileURLToPath(new URL('../../../scripts/vendor-pyodide.mjs', import.meta.url));
+const PYODIDE_CACHE = resolve(process.cwd(), '.pyodide-cache');
 
-// Prefixes of the wheels a BPC3 compute needs present in the mirror (diagnostic guard).
+// Wheels a BPC3 compute needs present in the mirror (diagnostic guard).
 const REQUIRED_WHEEL_PREFIXES = ['numpy-', 'pandas-', 'scipy-', 'patsy-'] as const;
 
 interface CovariateGolden {
@@ -43,30 +39,10 @@ interface CovariateGolden {
   linear_predictors: number[];
 }
 
-/** Assemble a complete offline mirror in a fresh temp dir; returns its path. */
-function buildMirror(): string {
+/** Run the vendor CLI into a fresh temp dir and return the mirror path. */
+function vendorMirror(): string {
   const dir = mkdtempSync(join(tmpdir(), 'wasm-icare-mirror-'));
-
-  const pyodideDir = pyodideIndexPath(); // node_modules/pyodide/ (trailing slash)
-  for (const file of CORE_FILES) copyFileSync(join(pyodideDir, file), join(dir, file));
-
-  // The scientific stack (numpy/pandas/scipy/patsy + transitive deps) warmed into
-  // .pyodide-cache; copy every cached wheel so the lockfile's file_names resolve.
-  const cacheDir = resolve(process.cwd(), '.pyodide-cache');
-  for (const file of readdirSync(cacheDir)) {
-    if (file.endsWith('.whl')) copyFileSync(join(cacheDir, file), join(dir, file));
-  }
-
-  // The vendored pyicare wheel.
-  copyFileSync(pyicareWheelPath(), join(dir, PYICARE_WHEEL_FILENAME));
-
-  // Fail loudly (not with a confusing boot error) if the cache was not warmed.
-  const present = readdirSync(dir);
-  for (const prefix of REQUIRED_WHEEL_PREFIXES) {
-    if (!present.some((f) => f.startsWith(prefix) && f.endsWith('.whl'))) {
-      throw new Error(`offline mirror is missing a ${prefix}*.whl (was .pyodide-cache warmed?)`);
-    }
-  }
+  execFileSync('node', [CLI, dir, '--cache', PYODIDE_CACHE], { stdio: 'pipe' });
   return dir;
 }
 
@@ -75,7 +51,7 @@ describe('offline Node boot from a vendored mirror', () => {
   let icare: ICARE;
 
   beforeAll(async () => {
-    mirror = buildMirror();
+    mirror = vendorMirror();
     icare = await loadICARE({
       indexURL: `${mirror}/`,
       pyicareWheelUrl: join(mirror, PYICARE_WHEEL_FILENAME),
@@ -88,6 +64,18 @@ describe('offline Node boot from a vendored mirror', () => {
     if (mirror) rmSync(mirror, { recursive: true, force: true });
   });
 
+  test('the CLI mirror carries the core runtime + required wheels + the pyicare wheel', () => {
+    const files = readdirSync(mirror);
+    for (const core of ['pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']) {
+      expect(files, `mirror missing core file ${core}`).toContain(core);
+    }
+    for (const prefix of REQUIRED_WHEEL_PREFIXES) {
+      expect(files.some((f) => f.startsWith(prefix) && f.endsWith('.whl')), `mirror missing ${prefix}*.whl`).toBe(true);
+    }
+    expect(basename(pyicareWheelPath())).toBe(PYICARE_WHEEL_FILENAME);
+    expect(files).toContain(PYICARE_WHEEL_FILENAME);
+  });
+
   test('offline:true without an indexURL is rejected before any boot', async () => {
     await expect(loadICARE({ offline: true })).rejects.toThrow(/indexURL/i);
   });
@@ -96,11 +84,6 @@ describe('offline Node boot from a vendored mirror', () => {
     await expect(loadICARE({ offline: true, indexURL: `${mirror}/` })).rejects.toThrow(
       /pyicareWheelUrl/i,
     );
-  });
-
-  test('the mirror carries the pyicare wheel by its pinned filename', () => {
-    expect(basename(pyicareWheelPath())).toBe(PYICARE_WHEEL_FILENAME);
-    expect(existsSync(join(mirror, PYICARE_WHEEL_FILENAME))).toBe(true);
   });
 
   test('a BPC3 compute from the offline mirror matches the golden', async () => {

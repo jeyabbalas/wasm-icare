@@ -24,7 +24,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "assets"
+    "assets",
+    "scripts/vendor-pyodide.mjs"
   ],
   "types": "./dist/index.d.ts",
   "exports": {
@@ -53,6 +54,9 @@
     "./assets/*": "./assets/*",
     "./package.json": "./package.json"
   },
+  "bin": {
+    "wasm-icare-vendor": "./scripts/vendor-pyodide.mjs"
+  },
   "dependencies": {
     "pyodide": "314.0.2"
   },
@@ -80,6 +84,7 @@
     "sync-fixtures": "node scripts/sync-fixtures.mjs",
     "verify-fixtures": "node scripts/sync-fixtures.mjs --verify",
     "vendor-wheel": "node scripts/vendor-wheel.mjs",
+    "vendor-pyodide": "node scripts/vendor-pyodide.mjs",
     "publint": "publint --strict",
     "attw": "attw --pack . --profile esm-only"
   }
