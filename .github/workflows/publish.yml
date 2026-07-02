@@ -1,0 +1,50 @@
+name: Publish
+
+# Publishes wasm-icare to npm via Trusted Publishing (OIDC) — no long-lived NPM_TOKEN.
+# The FIRST release (2.0.0) is published manually; Trusted Publishing can only be
+# configured on npmjs.com once the package exists. See RELEASING.md.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# id-token: write lets npm exchange the GitHub OIDC token for a short-lived publish
+# credential and attach build provenance automatically.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1; Node 20 ships npm 10.x.
+      - run: npm install -g npm@latest
+      - run: npm ci
+
+      # Preflight — fail before publishing, not after.
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:unit
+      - run: npm run check-package
+
+      # Guard: the published version must match the release tag (vX.Y.Z).
+      - name: Verify package version matches release tag
+        if: github.event_name == 'release'
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "::error::package.json version ($PKG) does not match release tag ($TAG)"
+            exit 1
+          fi
+
+      # OIDC provides auth + provenance automatically. Unscoped package ⇒ public by
+      # default (no --access), and no --provenance flag is needed under Trusted Publishing.
+      - run: npm publish
