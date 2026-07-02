@@ -5,7 +5,7 @@
  * - `apply` scores one covariate profile batch and returns the full {@link AbsoluteRiskResult}.
  * - `applyBatches` streams many batches, yielding a lean numeric result per batch so peak heap stays
  *   ≈ one batch (the 1M-row lever). The loop is authored `async` / `AsyncIterable` even though the
- *   in-process engine is synchronous, so the Phase 7 worker boundary needs no signature change.
+ *   in-process engine is synchronous, so the worker boundary (`applyModel` over RPC) needs no change.
  * - `free` releases the resident Python model.
  */
 

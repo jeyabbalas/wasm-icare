@@ -4,8 +4,8 @@
  * Given an already-loaded Pyodide (supplied by the env-specific bootstrap),
  * `createEngine` defines the resident bridge module once and exposes health
  * queries plus a low-level operation call. It knows nothing about Node-vs-
- * browser asset acquisition; that lives in `bootstrap.node.ts` (and, in
- * Phase 7, the browser bootstrap).
+ * browser asset acquisition; that lives in `bootstrap-node.ts` /
+ * `bootstrap-browser.ts`.
  */
 
 import type { PyodideInterface } from 'pyodide';
@@ -114,8 +114,8 @@ export function createEngine(pyodide: PyodideInterface): Engine {
       if (closed) return;
       closed = true;
       bridge.destroy();
-      // Pyodide has no in-process teardown in Node; real reclamation is process
-      // exit (Node) or worker.terminate() (browser, Phase 7).
+      // Pyodide has no in-process teardown; real reclamation is process exit
+      // (in-process) or worker.terminate() (the worker clients call it in close()).
     },
   };
 }

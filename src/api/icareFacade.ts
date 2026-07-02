@@ -42,8 +42,8 @@ export type MaterializedInput =
 
 /**
  * Resolves a data-bearing option value into what py-icare expects. Env-specific
- * (Node reads host files / URLs / Blobs; the browser materializer lands in
- * Phase 7).
+ * (the Node materializer reads host files / URLs / Blobs; the browser materializer
+ * fetches URLs and reads Blobs).
  */
 export type InputMaterializer = (
   input: unknown,
