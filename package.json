@@ -76,6 +76,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
@@ -87,6 +88,8 @@
     "vendor-wheel": "node scripts/vendor-wheel.mjs",
     "vendor-pyodide": "node scripts/vendor-pyodide.mjs",
     "publint": "publint --strict",
-    "attw": "attw --pack . --profile esm-only"
+    "attw": "attw --pack . --profile esm-only",
+    "check-package": "node scripts/check-package.mjs",
+    "smoke-tarball": "node scripts/smoke-tarball.mjs"
   }
 }
