@@ -46,6 +46,8 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@vitest/browser": "^3.2.6",
+    "playwright": "^1.61.1",
     "tsup": "^8",
     "typescript": "^5.6",
     "vitest": "^3"
@@ -57,6 +59,7 @@
     "test:unit": "vitest run --project unit",
     "test:e2e": "vitest run --project e2e",
     "test:e2e:slow": "RUN_SLOW=1 vitest run --project e2e-slow",
+    "test:browser": "npm run build && vitest run --project browser",
     "sync-fixtures": "node scripts/sync-fixtures.mjs",
     "verify-fixtures": "node scripts/sync-fixtures.mjs --verify",
     "vendor-wheel": "node scripts/vendor-wheel.mjs"
