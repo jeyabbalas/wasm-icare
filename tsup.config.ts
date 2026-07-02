@@ -23,6 +23,15 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
+  // Keep the heavy runtime deps OUT of the bundle:
+  // - `pyodide` is a declared dependency, resolved at runtime from the consumer's
+  //   node_modules (Node) or dynamic-imported from a URL (browser) — never inlined.
+  // - `apache-arrow` is an OPTIONAL dependency, `await import()`-ed only on the Arrow
+  //   input path (src/io/arrow.ts). Without `external`, `splitting:false` forces
+  //   esbuild to inline all ~500 KB of it into every bundle; externalizing keeps it a
+  //   runtime dynamic import (resolved by bundler consumers, or caught → friendly
+  //   ICAREError for CDN consumers who never pass an Arrow table).
+  external: ['pyodide', 'apache-arrow'],
   esbuildOptions(options) {
     // Inline `import source from '../bridge/bridge.py'` as the file's text, so
     // the resident Python bridge ships embedded in the bundle (no runtime IO).
