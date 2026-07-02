@@ -16,7 +16,12 @@
 
 export type ParamKind = 'value' | 'data' | 'formula' | 'logOR' | 'snpInfo' | 'nested';
 
-export type Operation = 'compute' | 'splitInterval' | 'validate';
+export type Operation =
+  | 'compute'
+  | 'splitInterval'
+  | 'validate'
+  | 'buildModel'
+  | 'applyModel';
 
 /** Kinds whose Python parameter carries a `_path` suffix (file-backed args). */
 const PATH_KINDS: ReadonlySet<ParamKind> = new Set<ParamKind>([
@@ -134,12 +139,42 @@ const VALIDATE_RAW: readonly RawSpec[] = [
 
 export const VALIDATE_ABSOLUTE_RISK_MODEL_PARAMS: ParamSpec[] = resolve(VALIDATE_RAW);
 
+// --- build_absolute_risk_model (8) — the profile-independent model args -----
+// (the compute `model_*` subset; no apply_*/age/return params — those come at apply time)
+
+const BUILD_MODEL_RAW: readonly RawSpec[] = [
+  { js: 'modelDiseaseIncidenceRates', kind: 'data' },
+  { js: 'modelCompetingIncidenceRates', kind: 'data' },
+  { js: 'modelCovariateFormula', kind: 'formula' },
+  { js: 'modelLogRelativeRisk', kind: 'logOR' },
+  { js: 'modelReferenceDataset', kind: 'data' },
+  { js: 'modelReferenceDatasetWeightsVariableName', kind: 'value' },
+  { js: 'numImputations', kind: 'value' },
+  { js: 'seed', kind: 'value' },
+];
+
+export const BUILD_ABSOLUTE_RISK_MODEL_PARAMS: ParamSpec[] = resolve(BUILD_MODEL_RAW);
+
+// --- AbsoluteRiskModel.apply_to_profile (5) — the per-batch apply args -------
+
+const APPLY_MODEL_RAW: readonly RawSpec[] = [
+  { js: 'applyAgeStart', kind: 'value' },
+  { js: 'applyAgeIntervalLength', kind: 'value' },
+  { js: 'applyCovariateProfile', kind: 'data' },
+  { js: 'returnLinearPredictors', kind: 'value' },
+  { js: 'returnReferenceRisks', kind: 'value' },
+];
+
+export const APPLY_MODEL_PARAMS: ParamSpec[] = resolve(APPLY_MODEL_RAW);
+
 // --- Registry + mapping functions -------------------------------------------
 
 export const PARAM_TABLES: Record<Operation, ParamSpec[]> = {
   compute: COMPUTE_ABSOLUTE_RISK_PARAMS,
   splitInterval: COMPUTE_ABSOLUTE_RISK_SPLIT_INTERVAL_PARAMS,
   validate: VALIDATE_ABSOLUTE_RISK_MODEL_PARAMS,
+  buildModel: BUILD_ABSOLUTE_RISK_MODEL_PARAMS,
+  applyModel: APPLY_MODEL_PARAMS,
 };
 
 /** The ordered parameter specs for an operation. */

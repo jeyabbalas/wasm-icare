@@ -12,14 +12,17 @@ import {
 } from '../../src/api/params';
 
 /**
- * Drift oracle — the EXACT snake_case parameter names (in signature order) of
- * py-icare's three public functions, captured verbatim from
- * py-icare/icare/absolute_risk_main.py (compute_absolute_risk :8,
- * compute_absolute_risk_split_interval :141, validate_absolute_risk_model :430).
+ * Drift oracle — the EXACT snake_case parameter names (in signature order) of the
+ * py-icare entry points the SDK maps, captured verbatim from py-icare/icare/
+ * absolute_risk_main.py (compute_absolute_risk, compute_absolute_risk_split_interval,
+ * validate_absolute_risk_model, build_absolute_risk_model) and
+ * icare/absolute_risk_model.py (AbsoluteRiskModel.apply_to_profile).
  *
  * params.ts DERIVES its Python names (camelToSnake + `_path` for file kinds), so
  * this independent, hand-transcribed list makes the check a genuine cross-check:
  * if py-icare renames a parameter, or the derivation/kind is wrong, this fails.
+ * (apply_to_profile's `output_format` is set by the bridge, not exposed as an SDK
+ * option, so it is intentionally absent from `applyModel`.)
  */
 const PY_NAMES = {
   compute: [
@@ -81,9 +84,32 @@ const PY_NAMES = {
     'model_name',
     'seed',
   ],
+  buildModel: [
+    'model_disease_incidence_rates_path',
+    'model_competing_incidence_rates_path',
+    'model_covariate_formula_path',
+    'model_log_relative_risk_path',
+    'model_reference_dataset_path',
+    'model_reference_dataset_weights_variable_name',
+    'num_imputations',
+    'seed',
+  ],
+  applyModel: [
+    'apply_age_start',
+    'apply_age_interval_length',
+    'apply_covariate_profile_path',
+    'return_linear_predictors',
+    'return_reference_risks',
+  ],
 } satisfies Record<Operation, string[]>;
 
-const OPS = ['compute', 'splitInterval', 'validate'] as const satisfies readonly Operation[];
+const OPS = [
+  'compute',
+  'splitInterval',
+  'validate',
+  'buildModel',
+  'applyModel',
+] as const satisfies readonly Operation[];
 
 /** Build a fully-populated options object with a distinctive value per key. */
 function makeSample(op: Operation): Record<string, unknown> {

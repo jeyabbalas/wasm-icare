@@ -16,6 +16,7 @@ import {
   defineBridge,
   runBridge,
   type BridgeModule,
+  type BuiltModel,
   type DataFrameProbe,
 } from '../bridge/bridgeClient';
 import { writeInputBytes } from '../io/fsWrite';
@@ -38,6 +39,21 @@ export interface Engine {
   ): unknown;
   /** Write input bytes into the Pyodide FS; returns the FS path (byte/FS sink). */
   writeInputFile(name: string, bytes: Uint8Array): string;
+  /** Build a resident fit-once model; returns its handle + fitted betas (build/apply-many path). */
+  buildModel(kwargs: Record<string, unknown>, frames?: Record<string, unknown> | null): BuiltModel;
+  /** Apply a built model (by handle) to a profile batch; returns the marshalled columnar result. */
+  applyModel(
+    handle: number,
+    kwargs: Record<string, unknown>,
+    frames?: Record<string, unknown> | null,
+  ): unknown;
+  /** Release a resident built model by handle (idempotent). */
+  freeModel(handle: number): void;
+  /**
+   * Total WASM heap size in bytes. A diagnostics accessor over the raw Pyodide handle (which the
+   * Engine otherwise hides) — used by the heap-watermark assertion on the streamed 1M-row path.
+   */
+  heapBytes(): number;
   /** Release the resident bridge proxy and gate further calls. */
   close(): Promise<void>;
 }
@@ -76,6 +92,23 @@ export function createEngine(pyodide: PyodideInterface): Engine {
     writeInputFile: (name, bytes) => {
       assertOpen();
       return writeInputBytes(pyodide, name, bytes);
+    },
+    buildModel: (kwargs, frames = null) => {
+      assertOpen();
+      return runBridge.buildModel(pyodide, bridge, kwargs, frames);
+    },
+    applyModel: (handle, kwargs, frames = null) => {
+      assertOpen();
+      return runBridge.applyModel(pyodide, bridge, handle, kwargs, frames);
+    },
+    freeModel: (handle) => {
+      assertOpen();
+      runBridge.freeModel(bridge, handle);
+    },
+    heapBytes: () => {
+      assertOpen();
+      return (pyodide as unknown as { _module: { HEAP8: { buffer: ArrayBuffer } } })._module.HEAP8
+        .buffer.byteLength;
     },
     close: async () => {
       if (closed) return;

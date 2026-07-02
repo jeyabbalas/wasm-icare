@@ -26,6 +26,14 @@ export interface DataFrameProbe {
   column_sums: Record<string, number>;
 }
 
+/** Small metadata returned by `build_model`: the resident-model handle + fitted betas. */
+export interface BuiltModel {
+  /** Opaque handle into the bridge's resident-model registry; pass to `apply_model`/`free_model`. */
+  handle: number;
+  /** Design-matrix column name → fitted log relative-risk (beta). */
+  model: Record<string, number>;
+}
+
 /**
  * Typed view of the resident `bridge.py` module (a callable `PyProxy`
  * namespace). Python `str` returns auto-convert to JS `string`; every other
@@ -37,6 +45,9 @@ export interface BridgeModule {
   describe_dataframe(columns: PyProxy): PyProxy;
   run(op: string, kwargs: PyProxy, frames?: PyProxy): PyProxy;
   columnarize(result: PyProxy, op: string): PyProxy;
+  build_model(kwargs: PyProxy, frames?: PyProxy): PyProxy;
+  apply_model(handle: number, kwargs: PyProxy, frames?: PyProxy): PyProxy;
+  free_model(handle: number): void;
   /** The namespace is itself a `PyProxy`; released in `Engine.close()`. */
   destroy(): void;
 }
@@ -146,6 +157,75 @@ export const runBridge = {
       framesPy?.destroy();
       raw?.destroy();
       columnar?.destroy();
+    }
+  },
+
+  /**
+   * Build a resident fit-once model (the reference dataset is read once) and return its handle +
+   * fitted betas. `kwargs`/`frames` carry the `model_*` args; the result metadata is small, so it
+   * crosses via `toJs` (no columnarize).
+   */
+  buildModel(
+    pyodide: PyodideInterface,
+    bridge: BridgeModule,
+    kwargs: Record<string, unknown>,
+    frames: Record<string, unknown> | null,
+  ): BuiltModel {
+    const kwargsPy = pyodide.toPy(kwargs) as PyProxy;
+    const framesPy = frames != null ? (pyodide.toPy(frames) as PyProxy) : undefined;
+    let proxy: PyProxy | undefined;
+    try {
+      proxy =
+        framesPy !== undefined ? bridge.build_model(kwargsPy, framesPy) : bridge.build_model(kwargsPy);
+      return proxy.toJs({ dict_converter: Object.fromEntries }) as BuiltModel;
+    } catch (error) {
+      throw wrapPythonError('bridge.build_model failed', error);
+    } finally {
+      kwargsPy.destroy();
+      framesPy?.destroy();
+      proxy?.destroy();
+    }
+  },
+
+  /**
+   * Apply a built model (by `handle`) to a profile batch and marshal the result. Mirrors `run`:
+   * the raw dict is passed straight into `columnarize` and never crosses as data, so only the
+   * transient inputs plus `raw`/`columnar` are released.
+   */
+  applyModel(
+    pyodide: PyodideInterface,
+    bridge: BridgeModule,
+    handle: number,
+    kwargs: Record<string, unknown>,
+    frames: Record<string, unknown> | null,
+  ): unknown {
+    const kwargsPy = pyodide.toPy(kwargs) as PyProxy;
+    const framesPy = frames != null ? (pyodide.toPy(frames) as PyProxy) : undefined;
+    let raw: PyProxy | undefined;
+    let columnar: PyProxy | undefined;
+    try {
+      raw =
+        framesPy !== undefined
+          ? bridge.apply_model(handle, kwargsPy, framesPy)
+          : bridge.apply_model(handle, kwargsPy);
+      columnar = bridge.columnarize(raw, 'applyModel');
+      return marshalColumnarResult(columnar);
+    } catch (error) {
+      throw wrapPythonError('bridge.apply_model failed', error);
+    } finally {
+      kwargsPy.destroy();
+      framesPy?.destroy();
+      raw?.destroy();
+      columnar?.destroy();
+    }
+  },
+
+  /** Release a resident built model by handle (idempotent). */
+  freeModel(bridge: BridgeModule, handle: number): void {
+    try {
+      bridge.free_model(handle);
+    } catch (error) {
+      throw wrapPythonError('bridge.free_model failed', error);
     }
   },
 };

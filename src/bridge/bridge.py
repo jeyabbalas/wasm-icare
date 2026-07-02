@@ -133,6 +133,25 @@ def describe_dataframe(columns):
     }
 
 
+def _merge_frames(kw, frames):
+    """Merge object-sink ``frames`` into a kwargs dict, building a DataFrame per frame.
+
+    Each ``frame`` is either ``{'columns': ..., 'dtypes': ...}`` (built by ``build_df``)
+    or ``{'arrow_ipc': <bytes>}`` (built by ``build_df_from_arrow``); it is merged under
+    its py-icare parameter name, overriding any same-named path kwarg. Shared by ``run``,
+    ``build_model``, and ``apply_model``.
+    """
+    if frames is None:
+        return kw
+    for name, frame in dict(frames).items():
+        frame = dict(frame)
+        if "arrow_ipc" in frame:
+            kw[str(name)] = build_df_from_arrow(frame["arrow_ipc"])
+        else:
+            kw[str(name)] = build_df(frame["columns"], frame.get("dtypes"))
+    return kw
+
+
 def run(op, kwargs, frames=None):
     """Dispatch to a py-icare public function with ``output_format='dataframe'``.
 
@@ -141,27 +160,64 @@ def run(op, kwargs, frames=None):
       ``undefined``-pruned by params.ts ``toPythonKwargs``); omitted keys let
       py-icare apply its own defaults.
     - ``frames``: optional ``{py_param_name: frame}`` for the object-sink input
-      path. ``frame`` is either ``{'columns': ..., 'dtypes': ...}`` (built by
-      ``build_df``) or ``{'arrow_ipc': <bytes>}`` (built by
-      ``build_df_from_arrow``). Merged into ``kw`` under ``py_param_name`` so it
-      overrides any same-named path kwarg.
+      path (see ``_merge_frames``).
     """
     try:
         fn_name = _DISPATCH[op]
     except KeyError:
         raise ValueError(f"unknown operation: {op!r}")
 
-    kw = dict(kwargs) if kwargs is not None else {}
-    if frames is not None:
-        for name, frame in dict(frames).items():
-            frame = dict(frame)
-            if "arrow_ipc" in frame:
-                kw[str(name)] = build_df_from_arrow(frame["arrow_ipc"])
-            else:
-                kw[str(name)] = build_df(frame["columns"], frame.get("dtypes"))
+    kw = _merge_frames(dict(kwargs) if kwargs is not None else {}, frames)
     kw["output_format"] = "dataframe"
 
     return getattr(icare, fn_name)(**kw)
+
+
+# --- Fit-once / apply-many resident models (Phase 6) ------------------------
+# build_model constructs an AbsoluteRiskModel ONCE (the reference dataset is read a single
+# time), apply_model scores a profile batch reusing that fit, and free_model releases it.
+# Handles are ints so they cross to JS as plain numbers.
+_MODELS = {}
+_NEXT_HANDLE = [0]
+
+
+def build_model(kwargs, frames=None):
+    """Build a reusable absolute-risk model; return its handle + small metadata.
+
+    ``kwargs``/``frames`` carry the model arguments via the same channels as ``run`` (the
+    ``model_*`` subset — no apply/age/return params). The fitted model is retained in
+    ``_MODELS`` until ``free_model``. Returns ``{'handle': int, 'model': {design_column:
+    beta}}`` — small enough to cross via ``toJs`` (no columnarize).
+    """
+    kw = _merge_frames(dict(kwargs) if kwargs is not None else {}, frames)
+    model = icare.build_absolute_risk_model(**kw)
+    handle = _NEXT_HANDLE[0]
+    _NEXT_HANDLE[0] += 1
+    _MODELS[handle] = model
+    betas = dict(zip(model.population_distribution.columns.tolist(), model.beta_estimates.tolist()))
+    return {"handle": handle, "model": betas}
+
+
+def apply_model(handle, kwargs, frames=None):
+    """Apply a built model (by ``handle``) to a profile batch; return the raw result dict.
+
+    Mirrors ``run``: the JS side calls ``columnarize(result, 'applyModel')`` then marshals it
+    (same ``{model, profile, reference_risks?, method}`` shape as ``compute``). The profile
+    batch arrives via ``frames`` (object sink) or a path in ``kwargs``. The reference dataset
+    is NOT re-read — the fitted state on the model is reused.
+    """
+    try:
+        model = _MODELS[int(handle)]
+    except KeyError:
+        raise ValueError(f"unknown model handle: {handle!r} (already freed?)")
+    kw = _merge_frames(dict(kwargs) if kwargs is not None else {}, frames)
+    kw["output_format"] = "dataframe"
+    return model.apply_to_profile(**kw)
+
+
+def free_model(handle):
+    """Release a built model by handle. Idempotent (no error if already freed)."""
+    _MODELS.pop(int(handle), None)
 
 
 def columnarize(result, op=None):
