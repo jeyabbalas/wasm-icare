@@ -62,7 +62,7 @@
     "pyodide": "314.0.2"
   },
   "optionalDependencies": {
-    "apache-arrow": "^17"
+    "apache-arrow": "^21"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
