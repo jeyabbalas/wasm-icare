@@ -1,0 +1,18 @@
+# Dependabot keeps the GitHub Actions pinned in .github/workflows/ up to date, so a
+# forced runtime deprecation (e.g. the Node 20 -> 24 migration) arrives as a PR
+# rather than a red nightly. https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    # "/" scans .github/workflows/ (ci.yml, publish.yml).
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    # Bundle every action bump into ONE PR per run instead of one PR per action.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
