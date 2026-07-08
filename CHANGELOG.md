@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-07-08
+
+### Changed
+
+- **Raised the minimum Node.js runtime from 18 to 20** (`engines.node` `>=20`). Node 18 reached
+  end-of-life in April 2025, and the test runner (vitest 4) no longer supports it. The CI matrix now
+  covers Node 20, 22, and 24.
+- Bumped the optional `apache-arrow` peer to `^21`. The Arrow input path is unchanged — tables still
+  cross to Python as IPC-stream bytes via the dynamically imported, optional dependency.
+- Development toolchain: vitest 4, `@vitest/browser` 4, and `@types/node` 26.
+
+### Notes
+
+- A TypeScript 7 bump is deferred until the `tsup` / `rollup-plugin-dts` toolchain supports its
+  rewritten compiler API; Dependabot is configured to skip that major until then.
+
 ## [2.0.0]
 
 A ground-up rewrite of wasm-icare as a TypeScript/ESM SDK for
