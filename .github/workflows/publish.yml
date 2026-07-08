@@ -25,7 +25,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: npm
       # Trusted Publishing (OIDC) requires npm >= 11.5.1; Node 20 ships npm 10.x.
-      - run: npm install -g npm@latest
+      # Pin to npm 11 rather than `@latest`: npm 12 dropped Node 20 (needs
+      # node ^22.22 || ^24.15 || >=26), so `@latest` breaks the install on this
+      # runner. npm 11 (node ^20.17 || >=22.9) covers OIDC and every CI Node line.
+      - run: npm install -g npm@11
       - run: npm ci
 
       # Preflight — fail before publishing, not after.
