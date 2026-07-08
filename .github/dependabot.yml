@@ -16,3 +16,25 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  - package-ecosystem: "npm"
+    # "/" scans package.json + package-lock.json at the repo root.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    # Low-risk minor/patch bumps (prod + dev) land in one PR; MAJOR bumps get their
+    # own PR each, so a potentially breaking upgrade is reviewed on its own.
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # pyodide is pinned exact and coordinated by hand with src/runtime/config.ts
+      # (PYODIDE_VERSION), the vendored wheel in assets/wheels/, and the CI cache key.
+      # A drop-in bump would be a half-change that fails CI — keep it manual.
+      - dependency-name: "pyodide"
