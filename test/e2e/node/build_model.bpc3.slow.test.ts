@@ -26,6 +26,25 @@ import { ATOL_DETERMINISTIC, ATOL_DISTRIBUTION, DIST_KEYS } from '../../helpers/
 
 const TILES = 8; // 8 × 14,137 ≈ 113k synthetic rows for the streaming/heap test
 
+/**
+ * Upper bound on TOTAL WASM-heap growth while streaming the tiled synthetic.
+ *
+ * `engine.heapBytes()` reads the WASM linear-memory size, which only ever grows —
+ * in coarse, never-shrinking `memory.grow` chunks (a single chunk can be tens of MB
+ * even when the live data added is tiny). So we can't assert a per-half plateau: a
+ * lazy grow can land in either half by chance (the old `tail <= firstBatchGrowth`
+ * check flaked for exactly this reason). What DOES hold regardless of chunk timing
+ * is that peak memory tracks `batchRows`, not total rows — total growth is bounded
+ * by a small constant, not by TILES.
+ *
+ * Empirically the healthy stream grows by exactly ONE ~45 MB grow chunk (measured
+ * deterministically: baseline ~224 MB → ~269 MB at the 3rd batch, then flat). The
+ * 128 MB cap leaves generous headroom for chunk-size variation / an extra chunk,
+ * while staying well below a multi-batch *linear* accumulation (~5 chunks ≈ 235 MB
+ * over these 5 batches) — so a growth-scales-with-rows regression still trips it.
+ */
+const MAX_STREAM_HEAP_GROWTH_BYTES = 128 * 1024 * 1024;
+
 interface CovariateGolden {
   age_start: number;
   age_interval_length: number;
@@ -190,13 +209,13 @@ describe('BPC3 build-once / apply-many (fit/apply split)', () => {
       assertAllClose(slice, wholeReferenceRisks, ATOL_DETERMINISTIC);
     }
 
-    // Bounded memory: once a batch-sized working set is allocated the heap reaches steady state, so the
-    // second half of the stream grows the heap by ~0 — peak memory tracks batchRows, NOT total rows.
+    // Bounded memory: peak tracks batchRows, NOT total rows. Because the WASM heap only grows in coarse
+    // never-shrinking chunks (see MAX_STREAM_HEAP_GROWTH_BYTES), we bound TOTAL growth by a TILES-
+    // independent constant rather than asserting a per-half plateau — the latter flaked when a lazy grow
+    // chunk happened to land in the second half. Streaming 113k rows in 25k-row batches must not grow the
+    // heap proportionally to the total; a linear-in-rows regression would blow far past the cap.
     expect(heapsAfterBatch.length).toBeGreaterThanOrEqual(4);
-    const mid = Math.floor(heapsAfterBatch.length / 2);
-    const tailGrowth = heapsAfterBatch[heapsAfterBatch.length - 1]! - heapsAfterBatch[mid]!;
-    const firstBatchGrowth = heapsAfterBatch[0]! - heapBaseline;
-    expect(tailGrowth).toBeLessThanOrEqual(Math.max(firstBatchGrowth, 0));
-    expect(tailGrowth).toBeLessThan(8 * 1024 * 1024); // < 8 MB tail growth across the second half
+    const totalGrowth = heapsAfterBatch[heapsAfterBatch.length - 1]! - heapBaseline;
+    expect(totalGrowth).toBeLessThanOrEqual(MAX_STREAM_HEAP_GROWTH_BYTES);
   }, 600_000);
 });

@@ -5,6 +5,16 @@ import { loadPyodide } from 'pyodide';
 
 import { pyodideIndexPath } from '../../../src/runtime/assets-node';
 import { PYODIDE_DEFAULT_PACKAGES } from '../../../src/runtime/config';
+import { withRetry } from '../../../src/util/retry';
+
+/**
+ * Extra Pyodide packages the E2E suites boot with beyond {@link PYODIDE_DEFAULT_PACKAGES}.
+ * `pyarrow` is the Arrow-input path's Python-side dependency (not a pyicare runtime
+ * dep, so it is intentionally absent from the default set). Warming it here means the
+ * Arrow test's `loadICARE({ packages: ['pyarrow'] })` is a local cache hit — no live
+ * jsDelivr fetch at `beforeAll`, which was the nightly `ModuleNotFoundError` flake.
+ */
+const E2E_EXTRA_PACKAGES = ['pyarrow'] as const;
 
 /**
  * Browser-project global setup (runs in Node). Downloads the scientific stack into
@@ -19,5 +29,7 @@ export default async function setup(): Promise<void> {
     enableRunUntilComplete: false,
     packageCacheDir: resolve(process.cwd(), '.pyodide-cache'),
   });
-  await pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES]);
+  // Retried: on a cold cache these come from jsDelivr, so a transient drop here
+  // would otherwise fail every downstream E2E test.
+  await withRetry(() => pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES, ...E2E_EXTRA_PACKAGES]));
 }

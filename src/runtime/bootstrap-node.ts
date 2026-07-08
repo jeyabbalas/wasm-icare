@@ -17,6 +17,7 @@ import { loadPyodide } from 'pyodide';
 import type { PyodideInterface } from 'pyodide';
 
 import { ICAREError } from '../util/errors';
+import { withRetry } from '../util/retry';
 import { pyicareWheelPath, pyodideIndexPath } from './assets-node';
 import { PYODIDE_DEFAULT_PACKAGES } from './config';
 import { createEngine, type Engine } from './engine';
@@ -104,8 +105,10 @@ export async function bootstrapNodeEngine(
   // THEN the pyicare wheel — pure-Python with no dependency resolution, which is
   // why its imports (numpy/pandas/scipy/patsy) must already be present. Both are
   // loaded from `indexURL` when set, so a complete mirror boots without network.
-  await pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES, ...(options.packages ?? [])]);
-  await pyodide.loadPackage(options.pyicareWheelUrl ?? pyicareWheelPath());
+  // Wrapped in `withRetry` so a transient CDN drop on a cold boot self-heals
+  // instead of surfacing as a hard `ModuleNotFoundError`.
+  await withRetry(() => pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES, ...(options.packages ?? [])]));
+  await withRetry(() => pyodide.loadPackage(options.pyicareWheelUrl ?? pyicareWheelPath()));
 
   return createEngine(pyodide);
 }

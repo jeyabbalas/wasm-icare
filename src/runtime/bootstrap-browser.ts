@@ -14,6 +14,7 @@
 import type { PyodideInterface } from 'pyodide';
 
 import { ICAREError } from '../util/errors';
+import { withRetry } from '../util/retry';
 import {
   PYICARE_WHEEL_CDN_URL,
   PYODIDE_CDN_BASE_URL,
@@ -77,9 +78,10 @@ export async function bootstrapBrowserEngine(
 
   // Scientific stack (lockfile packages resolve their `depends`), THEN the pyicare
   // wheel by URL — pure-Python with no dependency resolution, so its imports must
-  // already be present. Mirrors the Node bootstrap exactly from here on.
-  await pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES, ...(options.packages ?? [])]);
-  await pyodide.loadPackage(wheelUrl);
+  // already be present. Mirrors the Node bootstrap exactly from here on. Wrapped in
+  // `withRetry` so a transient CDN drop on a cold boot self-heals.
+  await withRetry(() => pyodide.loadPackage([...PYODIDE_DEFAULT_PACKAGES, ...(options.packages ?? [])]));
+  await withRetry(() => pyodide.loadPackage(wheelUrl));
 
   return createEngine(pyodide);
 }

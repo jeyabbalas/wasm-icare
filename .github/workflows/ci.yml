@@ -77,7 +77,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .pyodide-cache
-          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
           restore-keys: |
             pyodide-${{ runner.os }}-
       - run: npm run build
@@ -99,7 +99,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .pyodide-cache
-          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
           restore-keys: |
             pyodide-${{ runner.os }}-
       - name: Cache Playwright browsers
@@ -128,7 +128,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .pyodide-cache
-          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts') }}
+          key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
           restore-keys: |
             pyodide-${{ runner.os }}-
       # Build required: worker_threads.bpc3.slow.test.ts self-skips unless dist/ exists.
