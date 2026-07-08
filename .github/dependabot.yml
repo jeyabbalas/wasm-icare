@@ -38,3 +38,7 @@ updates:
       # (PYODIDE_VERSION), the vendored wheel in assets/wheels/, and the CI cache key.
       # A drop-in bump would be a half-change that fails CI — keep it manual.
       - dependency-name: "pyodide"
+      # tsup's bundled rollup-plugin-dts does not support TypeScript 7's rewritten
+      # compiler API yet — the build crashes. Revisit when the toolchain catches up.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]

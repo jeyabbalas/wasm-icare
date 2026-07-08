@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
 // Vitest "projects" (v3.2+): one runner surface, four isolated suites.
@@ -130,7 +131,9 @@ export default defineConfig({
           passWithNoTests: true,
           browser: {
             enabled: true,
-            provider: 'playwright',
+            // Vitest 4: `provider` takes a factory from `@vitest/browser-playwright`
+            // instead of the v3 `'playwright'` string.
+            provider: playwright(),
             headless: true,
             screenshotFailures: false,
             instances: [{ browser: 'chromium' }],
