@@ -27,8 +27,8 @@ jobs:
       matrix:
         node: ['18', '20', '22']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -47,8 +47,8 @@ jobs:
     needs: [checks]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
@@ -65,8 +65,8 @@ jobs:
     needs: [checks]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
@@ -74,7 +74,7 @@ jobs:
       # The Pyodide runtime + scientific wheels are downloaded from jsDelivr into
       # .pyodide-cache on a cold cache (warm-cache.setup.ts), then reused.
       - name: Cache Pyodide runtime + wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .pyodide-cache
           key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
@@ -89,21 +89,21 @@ jobs:
     needs: [checks]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
       - run: npm ci
       - name: Cache Pyodide runtime + wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .pyodide-cache
           key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
           restore-keys: |
             pyodide-${{ runner.os }}-
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -118,14 +118,14 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
       - run: npm ci
       - name: Cache Pyodide runtime + wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .pyodide-cache
           key: pyodide-${{ runner.os }}-${{ hashFiles('package-lock.json', 'assets/wheels/*.whl', 'src/runtime/config.ts', 'test/e2e/browser/warm-cache.setup.ts') }}
