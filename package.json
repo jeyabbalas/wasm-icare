@@ -67,7 +67,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
     "@types/node": "^22",
-    "@vitest/browser": "^3.2.6",
+    "@vitest/browser": "^4.1.10",
     "playwright": "^1.61.1",
     "publint": "^0.3.21",
     "tsup": "^8",
