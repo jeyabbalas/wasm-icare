@@ -80,10 +80,8 @@ const serveTestAssets = {
 const NODE_E2E = {
   environment: 'node' as const,
   maxWorkers: 1,
-  minWorkers: 1,
   hookTimeout: 300_000,
   testTimeout: 120_000,
-  passWithNoTests: true,
   // Warm `.pyodide-cache` once before the Node E2E run (same Node setup the browser
   // project uses) so the offline-mirror spec finds the scientific wheels locally
   // regardless of file order, and every boot skips the first-run CDN download.
@@ -128,7 +126,6 @@ export default defineConfig({
           globalSetup: ['test/e2e/browser/warm-cache.setup.ts'],
           hookTimeout: 300_000,
           testTimeout: 180_000,
-          passWithNoTests: true,
           browser: {
             enabled: true,
             // Vitest 4: `provider` takes a factory from `@vitest/browser-playwright`
