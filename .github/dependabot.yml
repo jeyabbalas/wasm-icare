@@ -33,6 +33,15 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      # vitest, @vitest/browser and @vitest/browser-playwright pin each other as EXACT
+      # peers, so a major bump of any one alone fails `npm ci` with ERESOLVE (hit on
+      # both 3 -> 4 and 4 -> 5). Propose their majors together as one PR.
+      vitest-major:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+        update-types:
+          - "major"
     ignore:
       # pyodide is pinned exact and coordinated by hand with src/runtime/config.ts
       # (PYODIDE_VERSION), the vendored wheel in assets/wheels/, and the CI cache key.
