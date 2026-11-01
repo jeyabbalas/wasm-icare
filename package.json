@@ -1,6 +1,6 @@
 {
   "name": "wasm-icare",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "JavaScript/TypeScript SDK for py-icare (iCARE: individualized Coherent Absolute Risk Estimation), run in Pyodide/WebAssembly.",
   "type": "module",
   "license": "MIT",
@@ -19,7 +19,7 @@
     "wasm"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "sideEffects": false,
   "files": [
@@ -67,13 +67,13 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
     "@types/node": "^26",
-    "@vitest/browser": "^4",
-    "@vitest/browser-playwright": "^4",
+    "@vitest/browser": "^5",
+    "@vitest/browser-playwright": "^5",
     "playwright": "^1.61.1",
     "publint": "^0.3.21",
     "tsup": "^8",
     "typescript": "^5.6",
-    "vitest": "^4"
+    "vitest": "^5"
   },
   "scripts": {
     "build": "tsup",

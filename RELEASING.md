@@ -16,11 +16,11 @@ release is published manually**; every release afterward is automated by `.githu
 
 `.github/workflows/ci.yml` (on push to `main`, PRs, nightly, and manual dispatch):
 
-- **checks** — Node 18/20/22: `typecheck`, `build`, `test:unit`, `verify-fixtures`.
+- **checks** — Node 22/24/26: `typecheck`, `build`, `test:unit`, `verify-fixtures`.
 - **package** — publish gates: `publint`, `attw`, `check-package` (tarball allowlist + 80 KB
   bundle gate), `smoke-tarball` (packs, installs into a scratch project, imports it).
-- **e2e** — Node 20: real Pyodide, the fast BPC3 + iCARE-Lit specs vs the R-derived goldens.
-- **browser** — Node 20: the same path through headless Chromium (Playwright), self-hosting Pyodide.
+- **e2e** — Node 22: real Pyodide, the fast BPC3 + iCARE-Lit specs vs the R-derived goldens.
+- **browser** — Node 22: the same path through headless Chromium (Playwright), self-hosting Pyodide.
 - **e2e-slow** — nightly / manual only: the slow validation + build-once + `worker_threads` specs.
 
 `.github/workflows/publish.yml` runs a fast preflight (`typecheck`, `build`, `test:unit`,
@@ -79,8 +79,8 @@ The workflow filename must match exactly — if `publish.yml` is renamed, update
 The Release fires `publish.yml` → the preflight runs → `npm publish` ships the package to npm
 with provenance. No secrets, no manual `npm publish`.
 
-> `npm version` bundles Node 20's npm 10.x, which is fine locally. Only the *workflow* needs
-> npm ≥ 11.5.1 for OIDC, and it upgrades itself (`npm install -g npm@latest`).
+> `npm version` with Node 22's bundled npm 10.x is fine locally. Only the *workflow* needs
+> npm ≥ 11.5.1 for OIDC, and it upgrades itself (`npm install -g npm@11`).
 
 ---
 

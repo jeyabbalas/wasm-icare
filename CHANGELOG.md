@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-11-01
+
+### Changed
+
+- **Raised the minimum Node.js runtime from 20 to 22** (`engines.node` `>=22`). Node 20 reached
+  end-of-life in April 2026, and the test runner (vitest 5) no longer supports it. The CI matrix now
+  covers Node 22, 24, and 26. The library API and runtime behavior are unchanged.
+- Development toolchain: vitest 5, `@vitest/browser` 5, and `@vitest/browser-playwright` 5.
+
 ## [2.1.0] - 2026-07-08
 
 ### Changed
